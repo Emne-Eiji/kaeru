@@ -6,7 +6,15 @@ All notable changes to Kaeru are documented here. Format: Keep a Changelog 1.1; 
 
 ### Added
 - WP-01 design package: architecture, ADR-001..007, UI/UX specification, capability matrix, privacy/testing/traceability documents, research register.
+- WP-02 implementation: core library (types, clocks, inhibition registry/coordinator, timer engine, focus controller, app state, capability registry), platform adapters (portal/logind inhibition, logind power monitor, lock monitor, notifications, autostart, single instance, theme watcher), app layer (Application, CommandRouter, ControlService over D-Bus, CLI parser, paths, settings), storage layer (SQLite WAL database, versioned migrations, project/session repositories, CSV export with formula-injection protection), UI shell (main window, six pages, tray controller with fallback, themes, original SVG icon set), desktop entry + AppStream metainfo.
 - Repository bootstrap (kaeru/), build system skeleton.
+
+### Fixed
+- `InhibitionCoordinator::effectiveState` now reports module/pause-gated requested capabilities (suppression/module-disable/Pause All report Inactive, not Unsupported); Pause All clears interrupted requests so they are never auto-restarted (spec §7).
+- `FocusController::pause()` computed remaining time after switching to Paused (froze 0 instead of the real remainder).
+- `SessionRepository::appendSegment` treated "no open segment" as an error (first segment of every session was rejected).
+- CLI `kaeru quit` expected a QString reply from the void `Quit` method (now uses a raw D-Bus message call).
+- Timer totals use ROUND() on julianday deltas (floating-point truncation lost 1 ms per segment).
 
 ### Notes
 - Specification 0.1.1 approved by user (2026-11-15); WP-00…WP-07 execution authorized the same date.

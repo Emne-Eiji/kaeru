@@ -26,6 +26,7 @@ add_library(kaeru_core STATIC
   src/core/Duration.cpp
   src/core/InhibitionRegistry.cpp
   src/core/InhibitionCoordinator.cpp
+  src/core/InhibitionBackend.cpp
   src/core/FakeInhibitionBackend.cpp
   src/core/TimerEngine.cpp
   src/core/FocusController.cpp
@@ -66,6 +67,7 @@ add_library(kaeru_app STATIC
   src/app/CliParser.cpp
   src/app/Paths.cpp
   src/app/RecoveryManager.cpp
+  src/app/Settings.cpp
 )
 target_link_libraries(kaeru_app PUBLIC Qt6::Core Qt6::DBus kaeru_core kaeru_platform kaeru_storage)
 
@@ -74,6 +76,7 @@ add_library(kaeru_ui STATIC
   src/ui/MainWindow.cpp
   src/ui/Theme.cpp
   src/ui/Icons.cpp
+  src/ui/TrayController.cpp
   src/ui/widgets/StatusBadge.cpp
   src/ui/pages/OverviewPage.cpp
   src/ui/pages/FocusPage.cpp
@@ -103,6 +106,8 @@ foreach(t IN ITEMS clocks registry coordinator timerengine focus worklog storage
   add_executable(test_${t} tests/unit/test_${t}.cpp)
   target_link_libraries(test_${t} PRIVATE kaeru_app kaeru_ui Qt6::Test)
   add_test(NAME test_${t} COMMAND test_${t})
+  set_tests_properties(test_${t} PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;KAERU_TEST_MODE=1")
 endforeach()
 
 install(TARGETS kaeru RUNTIME DESTINATION bin)

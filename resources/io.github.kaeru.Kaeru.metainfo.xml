@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Kaeru AppStream metainfo — app repository metadata only (never fetched at runtime) -->
+<component type="desktop-application">
+  <id>io.github.kaeru.Kaeru</id>
+  <metadata_license>FSFAP</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Kaeru</name>
+  <summary>Keep awake, focus timer and honest work log</summary>
+  <description>
+    <p>Kaeru keeps your machine awake on request, runs focus intervals
+    (single countdown or Pomodoro) and records an honest work log with
+    suspend-aware, suspend-exclusive accounting. It uses the desktop's own
+    mechanisms (xdg-desktop-portal Inhibit, with a logind fallback) and
+    never synthesizes input activity or modifies global power settings.</p>
+    <p>Everything is local: an SQLite work log under $XDG_DATA_HOME/kaeru,
+    CSV export with spreadsheet formula-injection protection, and a
+    diagnostics page that reports honestly what works on your system.</p>
+  </description>
+  <launchable type="desktop-id">io.github.kaeru.Kaeru.desktop</launchable>
+  <icon type="scalable">io.github.kaeru.Kaeru</icon>
+  <categories>
+    <category>Utility</category>
+    <category>Office</category>
+  </categories>
+  <provides>
+    <binary>kaeru</binary>
+    <modalias>d-bus:io.github.kaeru.Kaeru</modalias>
+  </provides>
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <display_length compare="ge">720</display_length>
+  </recommends>
+  <requires>
+    <display_length compare="ge">600</display_length>
+  </requires>
+  <releases>
+    <release version="0.1.1" date="2026-11-15">
+      <description>
+        <p>First packaged development release: keep awake (portal/logind),
+        focus timer, work log storage, reports and CSV export, tray,
+        Debian package.</p>
+      </description>
+    </release>
+  </releases>
+  <developer_name>Kaeru contributors</developer_name>
+  <url type="homepage">https://github.com/kaeru/kaeru</url>
+  <url type="bugtracker">https://github.com/kaeru/kaeru/issues</url>
+  <content_rating type="oars-1.1"/>
+</component>

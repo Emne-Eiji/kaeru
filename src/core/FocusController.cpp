@@ -125,12 +125,14 @@ bool FocusController::pause()
     if (m_phase == Phase::Idle || m_phase == Phase::Paused)
         return false;
     m_pausedFrom = m_phase;
+    // Freeze remaining time BEFORE switching to Paused (remainingMs() for a
+    // paused controller reads the frozen value).
+    const qint64 remaining = remainingMs();
     m_phase = Phase::Paused;
     // Countdown semantics: pausing freezes the interval; we model this by
     // cancelling the timer and re-creating it with the remaining time on
     // resume (timers are boot-clock anchored).
     if (m_timers && !m_countdownId.isEmpty()) {
-        const qint64 remaining = remainingMs();
         m_timers->cancel(m_countdownId);
         m_pausedRemainingMs = remaining < 0 ? 0 : remaining;
         m_countdownId.clear();

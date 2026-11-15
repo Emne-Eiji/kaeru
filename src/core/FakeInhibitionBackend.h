@@ -9,7 +9,7 @@ class FakeInhibitionBackend final : public InhibitionBackend {
 public:
     explicit FakeInhibitionBackend(QObject* parent = nullptr);
 
-    QString backendId() const override { return QStringLiteral("fake"); }
+    QString backendId() const override { return m_backendId; }
     Capabilities supportedCapabilities() const override { return m_supported; }
     QString availabilityDetail() const override { return QStringLiteral("test backend"); }
     bool serviceReachable() const override { return m_reachable; }
@@ -18,6 +18,7 @@ public:
     void release(const QString& bindingId) override;
 
     // Test controls
+    void setBackendId(const QString& id) { m_backendId = id; }
     void setSupported(Capabilities caps) { m_supported = caps; }
     void setReachable(bool r) { m_reachable = r; }
     void failNext(bool permissionDenied, const QString& detail);
@@ -27,6 +28,7 @@ public:
     QStringList acquiredIds() const { return m_bindings; }
 
 private:
+    QString m_backendId = QStringLiteral("fake");
     Capabilities m_supported = Capability::SystemSleep | Capability::SessionIdle;
     bool m_reachable = true;
     int m_failCounter = 0;

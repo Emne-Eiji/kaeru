@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Kaeru
+GenericName=Keep Awake and Focus Timer
+Comment=Keep your machine awake, run focus intervals and keep an honest work log
+Comment[de]=Verhindert Standby, läuft Fokusintervalle und führt ein ehrliches Arbeitsprotokoll
+Exec=kaeru
+Icon=io.github.kaeru.Kaeru
+Terminal=false
+Categories=Utility;Office;Accessibility;
+Keywords=keep awake;inhibit;focus;pomodoro;work log;timer;
+StartupWMClass=kaeru
+StartupNotify=true
+X-GNOME-UsesNotifications=true

@@ -14,6 +14,14 @@ void InhibitionCoordinator::setAppState(AppState* state)
     m_state = state;
     if (m_state) {
         connect(m_state, &AppState::changed, this, [this] { resolve(nowUtcFallback()); });
+        // Pause All interrupts active requests; interrupted manual sessions
+        // are never auto-restarted when leaving Pause All (spec §7) — the
+        // user restarts them explicitly.
+        connect(m_state, &AppState::pausedAllChanged, this, [this](bool paused) {
+            if (paused)
+                m_registry.clear();
+            resolve(nowUtcFallback());
+        });
     }
 }
 
@@ -238,7 +246,13 @@ void InhibitionCoordinator::dropBinding(const QString& bindingId)
 EffectiveAwakeState InhibitionCoordinator::effectiveState(const QDateTime& nowUtc) const
 {
     EffectiveAwakeState s;
-    s.requested = desiredCapabilities();
+    // Reported "requested" is what the coordinator will actually act on:
+    // module switch, Pause All and manual suppression gate the raw registry
+    // (suppressed or disabled → nothing requested → Inactive, not Unsupported).
+    const bool moduleActive = m_state
+        ? (m_state->isModuleEnabled(Module::KeepAwake) && !m_state->isPausedAll())
+        : true;
+    s.requested = (moduleActive && !m_suppressed) ? desiredCapabilities() : Capabilities();
     if (m_suppressed) {
         s.limitation = m_suppressReason;
     }

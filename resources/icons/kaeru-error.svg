@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Kaeru error state icon — original artwork, GPL-3.0-or-later with project -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="#b3483b"/>
+  <circle cx="21" cy="22" r="9" fill="#ffe9e5"/>
+  <circle cx="43" cy="22" r="9" fill="#ffe9e5"/>
+  <circle cx="21" cy="23" r="3.4" fill="#5c2019"/>
+  <circle cx="43" cy="23" r="3.4" fill="#5c2019"/>
+  <path d="M16 40c4.5 7 27.5 7 32 0" stroke="#ffe9e5" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+  <circle cx="51" cy="15" r="9" fill="#ef4444"/>
+  <rect x="49.8" y="9" width="2.6" height="7" rx="1.2" fill="#ffffff"/>
+  <rect x="49.8" y="17.6" width="2.6" height="2.6" rx="1.2" fill="#ffffff"/>
+</svg>
