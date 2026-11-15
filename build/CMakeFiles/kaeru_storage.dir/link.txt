@@ -1,0 +1,2 @@
+/usr/bin/ar qc libkaeru_storage.a CMakeFiles/kaeru_storage.dir/kaeru_storage_autogen/mocs_compilation.cpp.o
+/usr/bin/ranlib libkaeru_storage.a

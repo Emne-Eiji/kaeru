@@ -1,0 +1,2 @@
+/usr/bin/ar qc libkaeru_platform.a CMakeFiles/kaeru_platform.dir/kaeru_platform_autogen/mocs_compilation.cpp.o
+/usr/bin/ranlib libkaeru_platform.a
