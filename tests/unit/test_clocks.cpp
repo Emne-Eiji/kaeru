@@ -52,8 +52,10 @@ private slots:
         QVERIFY(toronto.timeZone().isValid());
         const QDateTime local = toronto.nowLocal();
         QCOMPARE(local.timeZone(), toronto.timeZone());
-        // Local conversion must agree with UTC instant.
-        QCOMPARE(local.toUTC().msecsTo(toronto.nowUtc()), qint64(0));
+        // Local conversion must agree with the UTC instant. Two separate
+        // "now" reads can straddle a millisecond boundary → allow 1 s skew.
+        const QDateTime utcNow = toronto.nowUtc();
+        QVERIFY(qAbs(local.toUTC().msecsTo(utcNow)) <= 1000);
     }
 
     void parseDurationValid()
