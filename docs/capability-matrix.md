@@ -19,11 +19,11 @@
 | Keep display awake (session idle inhibition) | implemented + integration-tested in WP-02 | Portal flag 8 (idle) | GNOME portal idle inhibition affects blank/idle actions |
 | Screen locking detection | implemented | org.gnome.ScreenSaver + logind LockedHint | used to pause Work Log (opt-out) |
 | Suspend/resume detection | implemented (signal) | logind `PrepareForSleep` | real-suspend full test = manual procedure (not auto-triggered) |
-| Tray icon (SNI) | implemented | QSystemTrayIcon → StatusNotifierItem | verified Qt 6.2 SNI support; live test WP-03 |
-| No-tray fallback | implemented | control window | always available |
+| Tray icon (SNI) | implemented + live-tested WP-03 | QSystemTrayIcon → StatusNotifierItem | SNI item registered on watcher (`:1.149/StatusNotifierItem`), tooltip state-reflecting, DBusMenu present; **icon image renders blank on this dev box** (Qt6 qsvg not installed — see evidence-wp03 §4); renders once `libqt6svg6` present (declared as .deb dependency) |
+| No-tray fallback | implemented | control window | always available; tray-unavailable retry/backoff (5×1 s) |
 | Notifications | implemented | org.freedesktop.Notifications | quiet-hours respected |
-| Autostart (opt-in) | implemented | XDG user autostart file | off by default; only Kaeru's own entry |
-| Single instance + IPC | implemented | D-Bus session service | CLI via same binary |
+| Autostart (opt-in) | implemented + sandbox-tested WP-03 | XDG user autostart file | off by default; only Kaeru's own entry (15/15 harness checks); GUI toggle wired to same backend |
+| Single instance + IPC | implemented + live-tested WP-03 | D-Bus session service | second launch forwards ShowWindow + exits 0 (two takeover bugs found & fixed, CHANGELOG); CLI via same binary |
 | Idle detection (input-activity) | **unavailable (out of 1.0 scope)** | — | manual tracking unaffected; reported honestly in Diagnostics |
 | Battery guard | not evaluated (deferred) | — | hardware exists; out of 1.0 |
 | Schedules / command-scoped keep awake | not evaluated (deferred) | — | requires separate approval |

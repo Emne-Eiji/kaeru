@@ -7,9 +7,11 @@ All notable changes to Kaeru are documented here. Format: Keep a Changelog 1.1; 
 ### Added
 - WP-01 design package: architecture, ADR-001..007, UI/UX specification, capability matrix, privacy/testing/traceability documents, research register.
 - WP-02 implementation: core library (types, clocks, inhibition registry/coordinator, timer engine, focus controller, app state, capability registry), platform adapters (portal/logind inhibition, logind power monitor, lock monitor, notifications, autostart, single instance, theme watcher), app layer (Application, CommandRouter, ControlService over D-Bus, CLI parser, paths, settings), storage layer (SQLite WAL database, versioned migrations, project/session repositories, CSV export with formula-injection protection), UI shell (main window, six pages, tray controller with fallback, themes, original SVG icon set), desktop entry + AppStream metainfo.
+- WP-03 (partial): tray verified live (SNI item, tooltip, DBusMenu); single-instance forwarding verified live; autostart backend sandbox-verified; `docs/evidence-wp03.md`. Packaging blocked on `sudo apt install debhelper lintian devscripts` (password unavailable this session).
 - Repository bootstrap (kaeru/), build system skeleton.
 
 ### Fixed
+- Single-instance: `tryAcquire` used `AllowReplacement` (second launch could take over the bus name instead of forwarding) and treated the non-error "name taken" reply as success (`registerService` returns `ServiceNotRegistered` as a *valid* reply). Both fixed; second launch now forwards and exits 0 (verified live; `docs/evidence-wp03.md` §2).
 - `InhibitionCoordinator::effectiveState` now reports module/pause-gated requested capabilities (suppression/module-disable/Pause All report Inactive, not Unsupported); Pause All clears interrupted requests so they are never auto-restarted (spec §7).
 - `FocusController::pause()` computed remaining time after switching to Paused (froze 0 instead of the real remainder).
 - `SessionRepository::appendSegment` treated "no open segment" as an error (first segment of every session was rejected).

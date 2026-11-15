@@ -16,12 +16,18 @@ SingleInstance::SingleInstance(QObject* parent)
 bool SingleInstance::tryAcquire()
 {
     QDBusConnection bus = QDBusConnection::sessionBus();
+    // No AllowReplacement: a second launch must forward to the running
+    // instance and exit, never take over (spec §7 single instance). D-Bus
+    // releases names of dead connections automatically, so replacement is
+    // unnecessary even after a crash.
     const QDBusReply<QDBusConnectionInterface::RegisterServiceReply> reply =
         bus.interface()->registerService(
             QStringLiteral(KAERU_APP_ID),
-            QDBusConnectionInterface::DontQueueService,
-            QDBusConnectionInterface::AllowReplacement);
-    m_primary = reply.isValid();
+            QDBusConnectionInterface::DontQueueService);
+    // A name clash is NOT a D-Bus error: it comes back as a valid reply with
+    // ServiceNotRegistered — check the value, not just validity.
+    m_primary = reply.isValid()
+        && reply.value() == QDBusConnectionInterface::ServiceRegistered;
     return m_primary;
 }
 
