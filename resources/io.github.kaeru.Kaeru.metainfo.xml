@@ -5,22 +5,21 @@
   <metadata_license>FSFAP</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>Kaeru</name>
-  <summary>Keep awake, focus timer and honest work log</summary>
+  <summary>Keep your computer awake on request</summary>
   <description>
-    <p>Kaeru keeps your machine awake on request, runs focus intervals
-    (single countdown or Pomodoro) and records an honest work log with
-    suspend-aware, suspend-exclusive accounting. It uses the desktop's own
-    mechanisms (xdg-desktop-portal Inhibit, with a logind fallback) and
-    never synthesizes input activity or modifies global power settings.</p>
-    <p>Everything is local: an SQLite work log under $XDG_DATA_HOME/kaeru,
-    CSV export with spreadsheet formula-injection protection, and a
-    diagnostics page that reports honestly what works on your system.</p>
+    <p>Kaeru asks your desktop to prevent automatic sleep and screen
+    blanking for 15 minutes, 30 minutes, 1 hour, 2 hours, or until you turn
+    it off. Choosing a new duration replaces the current request. It uses
+    the desktop's own mechanisms (xdg-desktop-portal Inhibit, with a
+    logind fallback) and never synthesizes input activity or modifies
+    global power settings.</p>
+    <p>Everything is local: no accounts, no cloud service and no telemetry.
+    A diagnostics page reports honestly what works on your system.</p>
   </description>
   <launchable type="desktop-id">io.github.kaeru.Kaeru.desktop</launchable>
-  <icon type="scalable">io.github.kaeru.Kaeru</icon>
+  <icon type="stock">io.github.kaeru.Kaeru</icon>
   <categories>
     <category>Utility</category>
-    <category>Office</category>
   </categories>
   <provides>
     <binary>kaeru</binary>
@@ -35,11 +34,18 @@
     <display_length compare="ge">600</display_length>
   </requires>
   <releases>
+    <release version="0.2.0" date="2026-11-16">
+      <description>
+        <p>Focused initial release: dependable Keep Awake with a single
+        replaceable request, reliable portal activation/release, corrected
+        frog icon rendering through the supplied PNG artwork, fixed
+        autostart flags and a simpler three-page GUI. Focus Timer, Work Log
+        and Reports are deferred.</p>
+      </description>
+    </release>
     <release version="0.1.1" date="2026-11-15">
       <description>
-        <p>First packaged development release: keep awake (portal/logind),
-        focus timer, work log storage, reports and CSV export, tray,
-        Debian package.</p>
+        <p>First packaged development release.</p>
       </description>
     </release>
   </releases>

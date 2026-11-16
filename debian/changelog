@@ -1,13 +1,21 @@
-kaeru (0.1.1-1) unstable; urgency=medium
+kaeru (0.2.0-1) unstable; urgency=medium
 
-  * First packaged release of Kaeru 0.1.1.
-  * Keep awake via xdg-desktop-portal Inhibit with logind sleep:block fallback.
-  * Focus timer (countdown + Pomodoro) with quiet-hours-aware notifications.
-  * Work log with SQLite storage, conservative crash recovery and CSV export
-    (spreadsheet formula-injection protected).
-  * Official frog icon identity (awake / focused / sleep expressions) in the
-    tray, launcher and application window.
-  * Tray menu, single-instance D-Bus control and CLI
-    (kaeru awake|focus|work|export|status|diagnostics).
+  * Initial user-facing release focused on dependable Keep Awake.
+  * Single-request Keep Awake model: choosing 15 minutes, 30 minutes,
+    1 hour, 2 hours or Indefinitely replaces the current request instead
+    of stacking another timer.
+  * Fix the xdg-desktop-portal activation race by subscribing to the
+    predicted request handle before Inhibit; activation, release and quit
+    now behave reliably.
+  * Timed Keep Awake expiry releases the inhibitor, clears the UI state
+    and can send a desktop notification.
+  * Focus Timer, Work Log and Reports are deferred from the user interface
+    and CLI. Their source, tests and any existing stored data are kept.
+  * Render the official frog artwork from the supplied PNG variants to
+    avoid Qt 6.2 SVG mis-rendering; add icon regression tests.
+  * Fix autostart: "kaeru --background --awake-on-login" starts hidden and
+    enables Keep Awake at login.
+  * Simplified GUI with Keep Awake, Settings and Diagnostics pages, plus
+    a File > Quit path and clearer release packaging.
 
- -- Kaeru Maintainers <kaeru@users.noreply.github.com>  Mon, 16 Nov 2026 03:30:00 -0500
+ -- Kaeru Maintainers <kaeru@users.noreply.github.com>  Mon, 16 Nov 2026 12:00:00 -0500

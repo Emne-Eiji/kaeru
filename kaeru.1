@@ -1,16 +1,21 @@
-.TH KAERU 1 "2026-11-16" "kaeru 0.1.1" "Kaeru manual"
+.TH KAERU 1 "2026-11-16" "kaeru 0.2.0" "Kaeru manual"
 .SH NAME
-kaeru \- keep awake, focus timer and honest work log
+kaeru \- keep your computer awake on request
 .SH SYNOPSIS
 .B kaeru
 [\fIcommand\fR] [\fIoptions\fR]
 .SH DESCRIPTION
 .B Kaeru
-prevents unwanted automatic system sleep (via the xdg\-desktop\-portal
-Inhibit interface, with a systemd\-logind sleep:block fallback), optionally
-keeps the display awake, runs focus intervals (countdown or Pomodoro) and
-records a suspend\-aware work log with CSV export. It never modifies global
-power\-management settings and never synthesizes input activity.
+asks the desktop to prevent automatic system sleep and screen blanking
+(via the xdg\-desktop\-portal Inhibit interface, with a systemd\-logind
+sleep:block fallback). Keep Awake can run for 15 minutes, 30 minutes,
+1 hour, 2 hours, or until turned off. Choosing a new duration replaces the
+current request; requests never stack.
+.PP
+Kaeru never modifies global power\-management settings and never
+synthesizes input activity. Everything is local: no accounts, no cloud and
+no telemetry. The Focus Timer, Work Log and Reports features are deferred
+from this release; their source and any existing stored data are preserved.
 .SH COMMANDS
 .TP
 .B (no command)
@@ -19,31 +24,33 @@ Open the application window.
 .B \-\-background
 Start without showing the window (tray only).
 .TP
+.B \-\-awake\-on\-login
+Start hidden and enable Keep Awake indefinitely. Used by the autostart
+entry; combine with \fB\-\-background\fR.
+.TP
 .B status
 [\fB\-\-json\fR]
-Show current status (keep\-awake state, focus, work log).
+Show the current Keep Awake status.
 .TP
 .B awake on
 [\fB\-\-duration\fR \fI30m\fR] [\fB\-\-mode\fR \fIsystem|display|both\fR]
-Request keep\-awake; optionally timed.
+Request Keep Awake for a duration. A new request replaces the current one.
+.TP
+.B awake indefinite
+Keep awake until explicitly turned off.
 .TP
 .B awake off
-Turn keep\-awake off now (suppresses automatic requests until resumed).
+Turn Keep Awake off now.
 .TP
-.B focus \fIstart|pause|resume|skip|stop|extend\fR
-[\fB\-\-duration\fR \fI25m\fR]
-Control the focus timer.
+.B diagnostics
+[\fB\-\-json\fR]
+Show capability and backend diagnostics.
 .TP
-.B work \fIstart|pause|resume|stop\fR
-[\fB\-\-project\fR \fINAME\fR]
-Control the work log recording.
+.B open
+Show the window of a running Kaeru instance.
 .TP
-.B export \fB\-\-format\fR \fIcsv\fR \fB\-\-from\fR \fIYYYY\-MM\-DD\fR \fB\-\-to\fR \fIYYYY\-MM\-DD\fR
-[\fB\-\-output\fR \fIFILE\fR]
-Export the work log as CSV (spreadsheet formula\-injection protected).
-.TP
-.B pause\-all | diagnostics | open | quit
-Pause all modules; show capability diagnostics; open the window; quit.
+.B quit
+Quit a running Kaeru instance, releasing inhibitors.
 .SH EXIT CODES
 .TP
 .B 0
@@ -66,7 +73,11 @@ permission denied
 Settings (kaeru.conf).
 .TP
 .I $XDG_DATA_HOME/kaeru/kaeru.db
-Work log SQLite database (WAL).
+Local database. Work Log storage is preserved for a future release; it is
+not used by the user interface in this version.
+.TP
+.I $XDG_CONFIG_HOME/autostart/io.github.kaeru.Kaeru.desktop
+Optional per-user autostart entry, created only when enabled in Settings.
 .SH AUTHOR
 Kaeru contributors.
 .SH LICENSE
