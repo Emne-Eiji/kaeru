@@ -4,17 +4,16 @@
 #include "TrayController.h"
 
 #include "pages/OverviewPage.h"
-#include "pages/FocusPage.h"
-#include "pages/ReportsPage.h"
 #include "pages/SettingsPage.h"
 #include "pages/DiagnosticsPage.h"
-#include "pages/WorkLogPage.h"
 
 #include <QApplication>
 #include <QCloseEvent>
 #include <QKeySequence>
 #include <QLabel>
 #include <QListWidget>
+#include <QMenu>
+#include <QMenuBar>
 #include <QShortcut>
 #include <QStackedWidget>
 #include <QStatusBar>
@@ -27,7 +26,7 @@ MainWindow::MainWindow(Application* app, QWidget* parent)
     , m_app(app)
 {
     setObjectName(QStringLiteral("KaeruMainWindow"));
-    setWindowTitle(tr("Kaeru"));
+    setWindowTitle(tr("Kaeru — Keep Awake"));
     setWindowIcon(Icons::appIcon());
     resize(860, 620);
     setMinimumSize(720, 520);
@@ -39,19 +38,22 @@ MainWindow::MainWindow(Application* app, QWidget* parent)
     m_tray->ensureStarted();
 
     connect(&Theme::instance(), &Theme::changed, this, [this](bool) { applyTheme(); });
-
-    // Keyboard shortcuts (accessibility: full page reachability)
-    auto* helpShortcut = new QShortcut(QKeySequence(QStringLiteral("Ctrl+?")), this);
-    connect(helpShortcut, &QShortcut::activated, this, [] {});
-    for (int i = 1; i <= 6; ++i) {
-        auto* sc = new QShortcut(QKeySequence(QStringLiteral("Ctrl+%1").arg(i)), this);
-        connect(sc, &QShortcut::activated, this, [this, i] { m_nav->setCurrentRow(i - 1); });
-    }
     statusBar()->showMessage(tr("Ready"), 4000);
 }
 
 void MainWindow::buildUi()
 {
+    // File menu: keyboard-accessible Settings/Quit even without a tray.
+    auto* fileMenu = menuBar()->addMenu(tr("&File"));
+    auto* settingsAction = fileMenu->addAction(tr("&Settings"), this, &MainWindow::showSettings);
+    settingsAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+,")));
+    fileMenu->addSeparator();
+    auto* quitAction = fileMenu->addAction(tr("&Quit Kaeru"), this, [this] {
+        m_app->prepareQuit();
+        qApp->quit();
+    });
+    quitAction->setShortcut(QKeySequence::Quit);
+
     auto* central = new QWidget(this);
     auto* layout = new QHBoxLayout(central);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -70,10 +72,7 @@ void MainWindow::buildUi()
         item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         return item;
     };
-    addNavItem(tr("Overview"));
-    addNavItem(tr("Focus"));
-    addNavItem(tr("Work Log"));
-    addNavItem(tr("Reports"));
+    addNavItem(tr("Keep Awake"));
     addNavItem(tr("Settings"));
     addNavItem(tr("Diagnostics"));
     m_nav->setCurrentRow(0);
@@ -81,25 +80,18 @@ void MainWindow::buildUi()
     m_pages = new QStackedWidget(central);
 
     m_overview = new OverviewPage(m_app, this);
-    m_focus = new FocusPage(m_app, this);
-    m_worklog = new WorkLogPage(m_app, this);
-    m_reports = new ReportsPage(m_app, this);
     m_settings = new SettingsPage(m_app, this);
     m_diagnostics = new DiagnosticsPage(m_app, this);
 
     m_pages->addWidget(m_overview);
-    m_pages->addWidget(m_focus);
-    m_pages->addWidget(m_worklog);
-    m_pages->addWidget(m_reports);
     m_pages->addWidget(m_settings);
     m_pages->addWidget(m_diagnostics);
 
     connect(m_nav, &QListWidget::currentRowChanged, m_pages, &QStackedWidget::setCurrentIndex);
     connect(m_nav, &QListWidget::currentRowChanged, this, [this](int row) {
         switch (row) {
-        case 3: m_reports->refresh(); break;
-        case 4: m_settings->refresh(); break;
-        case 5: m_diagnostics->refresh(); break;
+        case 1: m_settings->refresh(); break;
+        case 2: m_diagnostics->refresh(); break;
         default: break;
         }
     });
@@ -107,6 +99,12 @@ void MainWindow::buildUi()
     layout->addWidget(m_nav);
     layout->addWidget(m_pages, 1);
     setCentralWidget(central);
+
+    // Keyboard shortcuts (accessibility: full page reachability).
+    for (int i = 1; i <= 3; ++i) {
+        auto* sc = new QShortcut(QKeySequence(QStringLiteral("Ctrl+%1").arg(i)), this);
+        connect(sc, &QShortcut::activated, this, [this, i] { m_nav->setCurrentRow(i - 1); });
+    }
 }
 
 void MainWindow::applyTheme()
@@ -119,6 +117,12 @@ void MainWindow::showWindow()
     show();
     raise();
     activateWindow();
+}
+
+void MainWindow::showSettings()
+{
+    m_nav->setCurrentRow(1);
+    showWindow();
 }
 
 void MainWindow::startHidden()

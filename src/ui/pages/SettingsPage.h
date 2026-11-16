@@ -1,5 +1,5 @@
-// Kaeru — Settings page (spec §8.2, uiux §7)
-// Grouped sections: Modules, Startup, Notifications, Appearance, Data, About.
+// Kaeru — Settings page (initial release: Keep Awake only)
+// Sections: Startup, Notifications, Appearance, Data, About.
 #pragma once
 #include "app/Application.h"
 
@@ -9,7 +9,6 @@ class QCheckBox;
 class QComboBox;
 class QLabel;
 class QPushButton;
-class QTimeEdit;
 
 namespace kaeru {
 
@@ -34,14 +33,11 @@ private:
 
     Application* m_app = nullptr;
 
-    QList<QCheckBox*> m_moduleChecks;      // KeepAwake, Focus, WorkLog
     QCheckBox* m_startAfterLogin = nullptr;
     QCheckBox* m_keepAwakeOnLogin = nullptr;
     QCheckBox* m_notifyEnabled = nullptr;
     QCheckBox* m_notifySound = nullptr;
-    QCheckBox* m_quietHours = nullptr;
-    QTimeEdit* m_quietFromEdit = nullptr;
-    QTimeEdit* m_quietToEdit = nullptr;
+    QCheckBox* m_keepAwakeNotify = nullptr;
     QComboBox* m_themeBox = nullptr;
     QLabel* m_configPath = nullptr;
     QLabel* m_dataPath = nullptr;

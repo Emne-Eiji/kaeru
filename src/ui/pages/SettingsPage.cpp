@@ -1,10 +1,11 @@
-// Kaeru — Settings page (spec §8.2, uiux §7)
+// Kaeru — Settings page (initial release: Keep Awake only)
 #include "SettingsPage.h"
 #include "app/Paths.h"
 #include "app/Settings.h"
 #include "platform/AutostartBackend.h"
 #include "ui/Icons.h"
 
+#include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDir>
@@ -15,8 +16,6 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSignalBlocker>
-#include <QTime>
-#include <QTimeEdit>
 #include <QVBoxLayout>
 
 namespace kaeru {
@@ -37,33 +36,21 @@ SettingsPage::SettingsPage(Application* app, QWidget* parent)
     root->setContentsMargins(24, 20, 24, 20);
     root->setSpacing(12);
 
-    // ---- Modules ----
-    QVBoxLayout* cardLayout = nullptr;
-    QWidget* modulesCard = sectionCard(tr("Modules"));
-    cardLayout = qobject_cast<QVBoxLayout*>(modulesCard->layout());
-    const QStringList moduleNames = { tr("Keep Awake"), tr("Focus"), tr("Work Log") };
-    for (int i = 0; i < moduleNames.size(); ++i) {
-        auto* cb = new QCheckBox(moduleNames.at(i), modulesCard);
-        cb->setAccessibleName(tr("%1 module enabled").arg(moduleNames.at(i)));
-        const Module m = static_cast<Module>(i);
-        connect(cb, &QCheckBox::toggled, this, [this, m](bool on) {
-            m_app->settings()->setModuleEnabled(m, on);
-            m_app->appState()->setModuleEnabled(m, on);
-        });
-        cardLayout->addWidget(cb);
-        m_moduleChecks.append(cb);
-    }
-    root->addWidget(modulesCard);
-
     // ---- Startup (opt-in, separate switches; spec §7) ----
     QWidget* startupCard = sectionCard(tr("Startup"));
-    cardLayout = qobject_cast<QVBoxLayout*>(startupCard->layout());
+    auto* cardLayout = qobject_cast<QVBoxLayout*>(startupCard->layout());
     m_startAfterLogin = new QCheckBox(tr("Start Kaeru after login"), startupCard);
     connect(m_startAfterLogin, &QCheckBox::toggled, this, &SettingsPage::onStartupChanged);
     cardLayout->addWidget(m_startAfterLogin);
-    m_keepAwakeOnLogin = new QCheckBox(tr("Keep awake on login"), startupCard);
+    m_keepAwakeOnLogin = new QCheckBox(tr("Start Keep Awake when Kaeru starts"), startupCard);
     connect(m_keepAwakeOnLogin, &QCheckBox::toggled, this, &SettingsPage::onStartupChanged);
     cardLayout->addWidget(m_keepAwakeOnLogin);
+    auto* startupNote = new QLabel(
+        tr("Kaeru starts hidden in the system tray. Autostart only creates Kaeru's own per-user entry."),
+        startupCard);
+    startupNote->setObjectName(QStringLiteral("Subtle"));
+    startupNote->setWordWrap(true);
+    cardLayout->addWidget(startupNote);
     root->addWidget(startupCard);
 
     // ---- Notifications ----
@@ -72,27 +59,12 @@ SettingsPage::SettingsPage(Application* app, QWidget* parent)
     m_notifyEnabled = new QCheckBox(tr("Enable desktop notifications"), notifCard);
     connect(m_notifyEnabled, &QCheckBox::toggled, this, &SettingsPage::onNotificationsChanged);
     cardLayout->addWidget(m_notifyEnabled);
-    m_notifySound = new QCheckBox(tr("Play sound on notifications"), notifCard);
+    m_notifySound = new QCheckBox(tr("Play a sound with notifications"), notifCard);
     connect(m_notifySound, &QCheckBox::toggled, this, &SettingsPage::onNotificationsChanged);
     cardLayout->addWidget(m_notifySound);
-    m_quietHours = new QCheckBox(tr("Respect quiet hours (focus notifications only)"), notifCard);
-    connect(m_quietHours, &QCheckBox::toggled, this, &SettingsPage::onNotificationsChanged);
-    cardLayout->addWidget(m_quietHours);
-    auto* quietRow = new QHBoxLayout();
-    quietRow->addWidget(new QLabel(tr("From"), notifCard));
-    m_quietFromEdit = new QTimeEdit(notifCard);
-    m_quietFromEdit->setDisplayFormat(QStringLiteral("HH:mm"));
-    m_quietFromEdit->setAccessibleName(tr("Quiet hours start"));
-    connect(m_quietFromEdit, &QTimeEdit::timeChanged, this, &SettingsPage::onNotificationsChanged);
-    quietRow->addWidget(m_quietFromEdit);
-    quietRow->addWidget(new QLabel(tr("to"), notifCard));
-    m_quietToEdit = new QTimeEdit(notifCard);
-    m_quietToEdit->setDisplayFormat(QStringLiteral("HH:mm"));
-    m_quietToEdit->setAccessibleName(tr("Quiet hours end"));
-    connect(m_quietToEdit, &QTimeEdit::timeChanged, this, &SettingsPage::onNotificationsChanged);
-    quietRow->addWidget(m_quietToEdit);
-    quietRow->addStretch(1);
-    cardLayout->addLayout(quietRow);
+    m_keepAwakeNotify = new QCheckBox(tr("Notify when a timed Keep Awake ends"), notifCard);
+    connect(m_keepAwakeNotify, &QCheckBox::toggled, this, &SettingsPage::onNotificationsChanged);
+    cardLayout->addWidget(m_keepAwakeNotify);
     root->addWidget(notifCard);
 
     // ---- Appearance ----
@@ -112,9 +84,11 @@ SettingsPage::SettingsPage(Application* app, QWidget* parent)
     cardLayout = qobject_cast<QVBoxLayout*>(dataCard->layout());
     m_configPath = new QLabel(dataCard);
     m_configPath->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    m_configPath->setWordWrap(true);
     cardLayout->addWidget(m_configPath);
     m_dataPath = new QLabel(dataCard);
     m_dataPath->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    m_dataPath->setWordWrap(true);
     cardLayout->addWidget(m_dataPath);
     auto* deleteRow = new QHBoxLayout();
     m_deleteButton = new QPushButton(tr("Delete all Kaeru data…"), dataCard);
@@ -134,14 +108,23 @@ SettingsPage::SettingsPage(Application* app, QWidget* parent)
     aboutIcon->setPixmap(Icons::appIcon().pixmap(48, 48));
     aboutRow->addWidget(aboutIcon);
     auto* aboutLabel = new QLabel(
-        tr("Kaeru %1 — GPL-3.0-or-later.\nLocal-first keep awake, focus and work log. "
-           "No telemetry; private fields (tasks/tags/notes) are never logged.")
+        tr("Kaeru %1 — a local-first keep-awake utility.\n"
+           "GPL-3.0-or-later. No telemetry. Your desktop's own power mechanism is used.")
             .arg(QStringLiteral(KAERU_VERSION)),
         aboutCard);
     aboutLabel->setWordWrap(true);
     aboutRow->addWidget(aboutLabel, 1);
-    aboutRow->addStretch(1);
     cardLayout->addLayout(aboutRow);
+    auto* quitRow = new QHBoxLayout();
+    auto* quitButton = new QPushButton(tr("Quit Kaeru"), aboutCard);
+    connect(quitButton, &QPushButton::clicked, this, [this] {
+        // Quit releases inhibitors and exits cleanly.
+        m_app->prepareQuit();
+        qApp->quit();
+    });
+    quitRow->addWidget(quitButton);
+    quitRow->addStretch(1);
+    cardLayout->addLayout(quitRow);
     root->addWidget(aboutCard);
 
     root->addStretch(1);
@@ -174,31 +157,21 @@ void SettingsPage::loadFromSettings()
 {
     Settings* s = m_app->settings();
     // Loading the view must NEVER write settings: every setter below fires a
-    // change signal (toggled / timeChanged / currentIndexChanged) whose slot
-    // persists widget state — block all of them while seeding.
+    // change signal (toggled / currentIndexChanged) whose slot persists widget
+    // state — block all of them while seeding.
     {
         QSignalBlocker b1(m_startAfterLogin);
         QSignalBlocker b2(m_keepAwakeOnLogin);
         QSignalBlocker b3(m_notifyEnabled);
         QSignalBlocker b4(m_notifySound);
-        QSignalBlocker b5(m_quietHours);
-        QSignalBlocker b6(m_quietFromEdit);
-        QSignalBlocker b7(m_quietToEdit);
-        QSignalBlocker b8(m_themeBox);
-        for (int i = 0; i < m_moduleChecks.size(); ++i) {
-            const Module m = static_cast<Module>(i);
-            QSignalBlocker block(m_moduleChecks.at(i));
-            m_moduleChecks.at(i)->setChecked(s->moduleEnabled(m));
-        }
+        QSignalBlocker b5(m_keepAwakeNotify);
+        QSignalBlocker b6(m_themeBox);
         m_startAfterLogin->setChecked(s->startAfterLogin());
         m_keepAwakeOnLogin->setChecked(s->keepAwakeOnLogin());
+        m_keepAwakeOnLogin->setEnabled(s->startAfterLogin());
         m_notifyEnabled->setChecked(s->notificationsEnabled());
         m_notifySound->setChecked(s->soundEnabled());
-        m_quietHours->setChecked(s->quietHoursEnabled());
-        m_quietFromEdit->setTime(QTime::fromString(s->quietFrom(), QStringLiteral("HH:mm")));
-        m_quietToEdit->setTime(QTime::fromString(s->quietTo(), QStringLiteral("HH:mm")));
-        m_quietFromEdit->setEnabled(s->quietHoursEnabled());
-        m_quietToEdit->setEnabled(s->quietHoursEnabled());
+        m_keepAwakeNotify->setChecked(s->keepAwakeNotifications());
         const QString theme = s->theme();
         m_themeBox->setCurrentIndex(theme == QLatin1String("light") ? 1
                                   : theme == QLatin1String("dark")  ? 2
@@ -219,11 +192,18 @@ void SettingsPage::onStartupChanged()
     const bool awakeOnLogin = m_keepAwakeOnLogin->isChecked();
     s->setStartAfterLogin(afterLogin);
     s->setKeepAwakeOnLogin(awakeOnLogin);
+    m_keepAwakeOnLogin->setEnabled(afterLogin);
+
     // Autostart only manages Kaeru's own XDG entry (opt-in; never lingering).
-    if (afterLogin)
-        m_app->autostart()->enable(awakeOnLogin ? QStringLiteral("--awake-on-login") : QString());
-    else
+    // Always background the startup so login does not pop a window.
+    if (afterLogin) {
+        QString args = QStringLiteral("--background");
+        if (awakeOnLogin)
+            args += QStringLiteral(" --awake-on-login");
+        m_app->autostart()->enable(args);
+    } else {
         m_app->autostart()->disable();
+    }
 }
 
 void SettingsPage::onNotificationsChanged()
@@ -231,14 +211,7 @@ void SettingsPage::onNotificationsChanged()
     Settings* s = m_app->settings();
     s->setNotificationsEnabled(m_notifyEnabled->isChecked());
     s->setSoundEnabled(m_notifySound->isChecked());
-    const bool quiet = m_quietHours->isChecked();
-    s->setQuietHoursEnabled(quiet);
-    m_quietFromEdit->setEnabled(quiet);
-    m_quietToEdit->setEnabled(quiet);
-    s->setQuietFrom(m_quietFromEdit->time().toString(QStringLiteral("HH:mm")));
-    s->setQuietTo(m_quietToEdit->time().toString(QStringLiteral("HH:mm")));
-    // Re-seed the focus controller so quiet hours take effect immediately.
-    m_app->applyFocusSettingsFromSettings();
+    s->setKeepAwakeNotifications(m_keepAwakeNotify->isChecked());
 }
 
 void SettingsPage::onThemeChanged(int index)
@@ -254,10 +227,10 @@ void SettingsPage::onDeleteData()
     // Explicit double confirmation; states exactly what is deleted (uiux §6).
     const int first = QMessageBox::warning(this, tr("Delete all Kaeru data?"),
         tr("This deletes Kaeru's own data only:\n"
-           "• the work log database\n"
+           "• stored application data\n"
            "• settings\n"
            "• cache files\n\n"
-           "Recorded sessions and preferences cannot be recovered.\n"
+           "Deleted data cannot be recovered.\n"
            "Kaeru will stop before deleting. Continue?"),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (first != QMessageBox::Yes)

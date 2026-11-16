@@ -52,6 +52,8 @@ DiagnosticsPage::DiagnosticsPage(Application* app, QWidget* parent)
     m_capabilityTable->verticalHeader()->hide();
     m_capabilityTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_capabilityTable->setSelectionMode(QAbstractItemView::NoSelection);
+    m_capabilityTable->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_capabilityTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_capabilityTable->setAccessibleName(tr("Capability matrix"));
     capLayout->addWidget(m_capabilityTable);
     root->addWidget(capCard);
@@ -119,6 +121,13 @@ void DiagnosticsPage::refreshCapabilities()
         m_capabilityTable->setItem(row, 1, statusItem);
         m_capabilityTable->setItem(row, 2, detailItem);
     }
+    m_capabilityTable->resizeRowsToContents();
+    int rowsHeight = 0;
+    for (int row = 0; row < m_capabilityTable->rowCount(); ++row)
+        rowsHeight += m_capabilityTable->rowHeight(row);
+    m_capabilityTable->setFixedHeight(
+        m_capabilityTable->horizontalHeader()->height() + rowsHeight
+        + 2 * m_capabilityTable->frameWidth());
 }
 
 void DiagnosticsPage::refreshBindings()

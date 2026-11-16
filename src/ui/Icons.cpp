@@ -1,17 +1,19 @@
 // Kaeru — icon access (official frog identity, ADR-008)
 // The three frog expressions are the Kaeru visual identity (original artwork
 // supplied by Emne, GPL-3.0-or-later with the project; see docs/icon-assets.md).
+//
+// Embedded UI icons use the supplied PNG variants. Qt 6.2's SVG renderer
+// mis-paints the focused expression (black face), so SVG is never used for
+// runtime rendering; the installed SVG remains for scalable desktop entries.
 #include "Icons.h"
-
-#include <QFile>
 
 namespace kaeru {
 
-static const char* stateFile(IconState s)
+static const char* stateFileStem(IconState s)
 {
     switch (s) {
-    case IconState::Awake: return ":/icons/frog/awake.svg";
-    case IconState::Focus: return ":/icons/frog/focused.svg";
+    case IconState::Awake: return "awake";
+    case IconState::Focus: return "focused";
     case IconState::Inactive:
     case IconState::Recording:
     case IconState::Paused:
@@ -19,8 +21,19 @@ static const char* stateFile(IconState s)
     default:
         // Recording/paused/error all present as the inactive frog; the
         // tooltip (not the icon) carries the precise state (ADR-008).
-        return ":/icons/frog/sleep.svg";
+        return "sleep";
     }
+}
+
+static QIcon frogIcon(IconState state)
+{
+    const QString stem = QString::fromLatin1(stateFileStem(state));
+    QIcon icon;
+    for (int px : { 16, 24, 32, 48, 64, 128, 256 }) {
+        icon.addFile(QStringLiteral(":/icons/frog/png/%1-%2.png").arg(stem).arg(px),
+            QSize(px, px));
+    }
+    return icon;
 }
 
 QString Icons::stateIconName(IconState state)
@@ -40,12 +53,12 @@ QString Icons::stateIconName(IconState state)
 QIcon Icons::appIcon()
 {
     // Brand/launcher icon: the awake expression (recognizable, eyes open).
-    return QIcon(QStringLiteral(":/icons/frog/awake.svg"));
+    return frogIcon(IconState::Awake);
 }
 
 QIcon Icons::stateIcon(IconState state)
 {
-    return QIcon(QString::fromUtf8(stateFile(state)));
+    return frogIcon(state);
 }
 
 } // namespace kaeru

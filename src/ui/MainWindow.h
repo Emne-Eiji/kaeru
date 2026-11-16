@@ -1,9 +1,8 @@
-// Kaeru — main window shell: sidebar navigation + six pages (spec §8.2)
+// Kaeru — main window shell: sidebar navigation + initial-release pages
 #pragma once
 #include "app/Application.h"
 
 #include <QMainWindow>
-#include <QSystemTrayIcon>
 
 class QListWidget;
 class QStackedWidget;
@@ -12,9 +11,6 @@ class QCloseEvent;
 namespace kaeru {
 
 class OverviewPage;
-class FocusPage;
-class WorkLogPage;
-class ReportsPage;
 class SettingsPage;
 class DiagnosticsPage;
 class TrayController;
@@ -25,13 +21,11 @@ public:
     explicit MainWindow(Application* app, QWidget* parent = nullptr);
 
     void showWindow();
+    void showSettings();
     void startHidden();
 
     Application* app() const { return m_app; }
     TrayController* tray() const { return m_tray; }
-
-signals:
-    void requestQuit();
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -46,9 +40,6 @@ private:
     TrayController* m_tray = nullptr;
 
     OverviewPage* m_overview = nullptr;
-    FocusPage* m_focus = nullptr;
-    WorkLogPage* m_worklog = nullptr;
-    ReportsPage* m_reports = nullptr;
     SettingsPage* m_settings = nullptr;
     DiagnosticsPage* m_diagnostics = nullptr;
 };

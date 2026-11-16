@@ -1,4 +1,4 @@
-// Kaeru — Overview page (spec §8.3): state-first, immediate primary actions
+// Kaeru — Keep Awake page (initial release): one clear state, one action model
 #pragma once
 #include "app/Application.h"
 
@@ -18,27 +18,15 @@ public:
 
 private slots:
     void refresh();
-    void onToggleKeepAwake();
-    void onTurnOffNow();
     void onDurationChosen(qint64 ms);
+    void onTurnOffNow();
 
 private:
-    QWidget* makeCard();
-
     Application* m_app = nullptr;
     StatusBadge* m_awakeBadge = nullptr;
     QLabel* m_awakeDetail = nullptr;
     QLabel* m_awakeRemaining = nullptr;
-    QLabel* m_awakeWarning = nullptr;
-    QPushButton* m_toggleButton = nullptr;
     QPushButton* m_turnOffButton = nullptr;
-    QList<QPushButton*> m_durationChips;
-
-    StatusBadge* m_workBadge = nullptr;
-    QLabel* m_workDetail = nullptr;
-
-    StatusBadge* m_focusBadge = nullptr;
-    QLabel* m_focusDetail = nullptr;
 };
 
 } // namespace kaeru

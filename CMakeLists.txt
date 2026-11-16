@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(kaeru VERSION 0.1.1 LANGUAGES CXX DESCRIPTION "Kaeru - keep awake, focus and work log utility")
+project(kaeru VERSION 0.2.0 LANGUAGES CXX DESCRIPTION "Kaeru - dependable keep awake utility")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -90,12 +90,19 @@ add_library(kaeru_ui STATIC
 target_link_libraries(kaeru_ui PUBLIC Qt6::Widgets Qt6::Gui kaeru_app)
 
 # ---- main executable ----
-# BASE + PREFIX make the resource paths :/icons/frog/*.svg (see Icons.cpp).
+# Embedded UI icons use the supplied PNG raster variants: the original SVGs
+# are installed for desktop integration, but Qt 6.2's SVG renderer mis-paints
+# the focused frog (black face). PNGs guarantee identical artwork everywhere.
+set(KAERU_FROG_PNGS)
+foreach(px 16 24 32 48 64 128 256)
+  foreach(state awake focused sleep)
+    list(APPEND KAERU_FROG_PNGS resources/icons/frog/png/${state}-${px}.png)
+  endforeach()
+endforeach()
+
 qt_add_resources(kaeru_ui RESOURCES_PREFIX "/" PREFIX "/" BASE resources
   FILES
-  resources/icons/frog/awake.svg
-  resources/icons/frog/focused.svg
-  resources/icons/frog/sleep.svg
+  ${KAERU_FROG_PNGS}
 )
 
 add_executable(kaeru src/app/main.cpp)
@@ -103,7 +110,7 @@ target_link_libraries(kaeru PRIVATE kaeru_ui Qt6::Widgets)
 
 # ---- unit tests ----
 enable_testing()
-foreach(t IN ITEMS clocks registry coordinator timerengine focus worklog storage csv cliparser notify workmanager reports traystate manualawake)
+foreach(t IN ITEMS clocks registry coordinator timerengine focus worklog storage csv cliparser notify workmanager reports traystate manualawake icons)
   add_executable(test_${t} tests/unit/test_${t}.cpp)
   target_link_libraries(test_${t} PRIVATE kaeru_app kaeru_ui Qt6::Test)
   add_test(NAME test_${t} COMMAND test_${t})
