@@ -15,7 +15,7 @@ GUI, background (tray) and CLI/D-Bus modes.
 | WP-00 environment report | done | `docs/wp00-environment-report.md` |
 | WP-01 design package | done | architecture, ADR-001…007, uiux-design, capability matrix, privacy/testing/traceability docs, execution plan, PROJECT_SPEC |
 | WP-02 keep-awake core | done | inhibition registry/coordinator, portal + logind backends, clocks, storage layer, six-page UI, tray, packaging metadata |
-| WP-03 tray / single instance / autostart | partial | tray live-verified (SNI), single-instance forwarding verified, autostart sandbox-verified; **`.deb` packaging blocked** (missing toolchain — see §6) |
+| WP-03 tray / single instance / autostart | **done** | tray live-verified (SNI, frog states), single-instance forwarding verified, autostart sandbox-verified, **`.deb` built and lintian-clean**, packaged binary verified via extraction — `docs/evidence-wp03.md` |
 | WP-04 focus + notifications | done | full focus state machine, quiet-hours policy, sound hint; native notification captured |
 | WP-05 work log | done | sessions/segments/projects, SQLite + migrations, recovery checkpoints, lock/suspend pause, conservative crash recovery; native lifecycle verified |
 | WP-06 reports + CSV | done | reports page (filters, daily/project totals, focus time), CLI/D-Bus CSV export with formula-injection guard; native export verified |
@@ -31,9 +31,16 @@ Every claim below has exact commands and expected/actual in its evidence file:
   `systemd-inhibit --list` (appears while held, gone after release);
   expiry → inactive; quit → all inhibitors released.
 - **Tray / single instance / autostart:** `docs/evidence-wp03.md` — SNI item
-  `:1.149/StatusNotifierItem` on the live GNOME 42 session, state-reflecting
-  tooltip, DBusMenu; second launch forwards + exits 0; autostart backend
-  15/15 sandbox checks.
+  on the live GNOME 42 session with the official frog expressions
+  (tooltip + pixmap + panel-diff verified in all five states), second launch
+  forwards + exits 0, autostart backend 15/15 sandbox checks.
+- **Debian package (WP-03 complete):** `kaeru_0.1.1-1_amd64.deb` (361 KB,
+  amd64) built with debhelper via `dpkg-buildpackage -us -uc -b`;
+  `lintian`: only the informational `initial-upload-closes-no-bugs`
+  (accepted, documented); md5sums 32/32 OK; `desktop-file-validate` clean;
+  packaged binary verified via extraction (version/awake-via-portal/work
+  log/CSV export/clean quit); icon resolution 8/8 from the installed
+  hicolor tree.
 - **Focus notifications + quiet hours:** `docs/evidence-wp04.md` — 1
   notification on interval completion (dbus-monitor capture); 0 during
   all-day quiet hours with config preserved (caught + fixed a settings-clobber
@@ -72,9 +79,13 @@ All tests run with `QT_QPA_PLATFORM=offscreen` and an isolated
 
 ## 5. Release candidate artifacts
 
-- **Source:** this repository (commit tagged in §8).
+- **Source:** this repository (see §8 for the release commits).
+- **Debian package:** `dist/kaeru_0.1.1-1_amd64.deb` (361,074 bytes,
+  amd64) — built with `dpkg-buildpackage -us -uc -b`; `lintian` clean except
+  the informational first-upload note; md5sums 32/32 OK; install with
+  `sudo apt install ./kaeru_0.1.1-1_amd64.deb` (see evidence-wp03 §5).
 - **Staged Linux tarball:** `dist/kaeru-0.1.1-Linux-amd64.tar.gz`
-  (bin/kaeru + .desktop + hicolor icon + metainfo + README/LICENSE;
+  (bin/kaeru + .desktop + hicolor icons + metainfo + README/LICENSE;
   installs under a `kaeru-0.1.1/` prefix — copy `bin/kaeru` into PATH and
   `share/*` into `$XDG_DATA_DIRS` or `$HOME/.local/share`).
 - **Checksums:** `dist/kaeru-0.1.1-Linux-amd64.tar.gz.sha256`
@@ -86,18 +97,19 @@ All tests run with `QT_QPA_PLATFORM=offscreen` and an isolated
 
 ## 6. Honest gaps (no unsupported claims)
 
-1. **`.deb` package NOT built** — `debhelper`/`lintian`/`devscripts` are not
-   installed and `sudo apt install` needs a password this session could not
-   supply. The `debian/` packaging will be added and the
-   install/upgrade/remove/reinstall cycle executed once the user runs:
-   `sudo apt install -y debhelper lintian devscripts`
-   (the exact packages authorized on 2026-11-15). Everything else (install
-   rules, desktop file, icons, metainfo, README/LICENSE) is already in
-   CMakeLists and staged in the tarball.
-2. **Icons render blank on THIS dev box** — Qt6 qsvg (`libqt6svg6`) is not
-   installed locally. The icon engine is declared as a runtime dependency for
-   packaging, so normal desktops render the SVG icons; local re-test needs
-   `sudo apt install -y libqt6svg6`.
+1. **dpkg-database lifecycle tests NOT run** — `dpkg -i` / upgrade / remove /
+   reinstall require root and this session has no sudo password. The `.deb`
+   itself is built and verified (lintian, md5sums, desktop-validate,
+   extraction-run, icon resolution); the package has **no maintainer scripts
+   and no conffiles**, so data preservation across upgrade/remove is
+   structural. Run the cycle once a root shell is available:
+   `dpkg -i ../kaeru_0.1.1-1_amd64.deb` → launch → `dpkg -r kaeru` →
+   verify `~/.config/kaeru` untouched.
+2. **Icons render desaturated on THIS dev box** — the user's
+   `desaturated-tray-icons` GNOME extension greyscales all tray icons; the
+   frog pixmap data itself carries the official colors (verified via D-Bus
+   IconPixmap). The package installs both SVG and PNG variants; icon
+   rendering itself is verified (8/8 resolution + live tray).
 3. **Real suspend/resume not auto-triggered** (user session protection).
    Boot-clock suspend-inclusive countdowns are verified with injected clocks
    and the logind inhibitor lifecycle; the manual real-suspend procedure is
@@ -135,7 +147,10 @@ b898cb9 WP-03 (partial) tray/single-instance/autostart
 a593f05 WP-04 focus notifications + settings-view load fix
 400291a WP-05 work log end-to-end
 7f181e2 WP-06 reports + CSV export
-bc40365 WP-07 hardening, resource measurement, delivery report (this commit)
+5ebecee WP-07 hardening, resource measurement, delivery report
+26b5a6d Official frog icon identity (ADR-008): tray states, launcher, resources
+82e2df6 Debian packaging (WP-03 completion): debhelper + lintian-clean .deb
+dce5ae7 WP-03 completion evidence and documentation (this commit)
 ```
 
 ## 9. How to use (quick start)

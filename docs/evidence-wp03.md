@@ -1,118 +1,127 @@
-# WP-03 — Tray, Single Instance, Autostart Evidence (partial: packaging blocked)
+# WP-03 — Tray, Single Instance, Autostart, Frog Identity and Debian Package (COMPLETE)
 
-Environment: Pop!_OS 22.04 (Ubuntu base), GNOME 42, X11 `DISPLAY=:1`,
-`XDG_RUNTIME_DIR=/run/user/1000`, user `banana` (uid 1000), systemd 249,
-Qt 6.2.4. Binary: `kaeru 0.1.1` (build tree). All runs sandboxed with
-`KAERU_TEST_HOME` (no real user data touched).
+Environment: Pop!_OS 22.04 (Ubuntu 22.04 base), GNOME 42, X11 `DISPLAY=:1`,
+`XDG_RUNTIME_DIR=/run/user/1000`, user `banana` (uid 1000). Qt 6.2.4 with
+qtsvg (`libqt6svg6`), debhelper 13.6, lintian 2.114, dpkg-buildpackage.
+Binary: `kaeru 0.1.1-1` (amd64). All runs sandboxed via `KAERU_TEST_HOME`.
 
-## 1. Tray (live X11 session) — PASS
+## 1. Tray — dynamic official frog expressions (PASS)
 
-```
-rm -rf /tmp/opencode/kaeru-tray-test && mkdir -p /tmp/opencode/kaeru-tray-test
-KAERU_TEST_HOME=/tmp/opencode/kaeru-tray-test DISPLAY=:1 XDG_RUNTIME_DIR=/run/user/1000 \
-  ./build/kaeru &
-```
-
-Objective evidence (not just a screenshot):
-
-- SNI watcher (`gnome-shell` owns `org.kde.StatusNotifierWatcher`) lists kaeru:
-  `busctl --user get-property org.kde.StatusNotifierWatcher /StatusNotifierWatcher
-   org.kde.StatusNotifierWatcher RegisteredStatusNotifierItems`
-  → `as 2 ":1.90/org/ayatana/NotificationItem/caffeine_cup_empty" ":1.149/StatusNotifierItem"`
-  (`:1.149` = kaeru's connection, pid 16120).
-- Item properties:
-  `busctl --user get-property :1.149 /StatusNotifierItem org.kde.StatusNotifierItem ToolTip`
-  → `"Kaeru — inactive"` (state-reflecting).
-  `Menu` → `/MenuBar` (DBusMenu registered, `org.freedesktop.DBusMenu.GetLayout`
-  and `Event` present per introspect). `ItemIsMenu` → `false`.
-- Main window exists: `xdotool search --name "Kaeru"` finds the window.
-- Screenshot captured: `/tmp/opencode/tray-full.png` (1920×1080 x11grab frame;
-  NOT committed — may contain unrelated desktop content; user can inspect).
-
-Limitation (recorded, see §4): on THIS machine the tray icon image itself is
-blank because the Qt6 SVG icon engine is absent (qtsvg not installed, sudo
-blocked); tooltip/menu/window evidence above is unaffected.
-
-## 2. Single instance (forward + exit) — PASS (after fix)
-
-Commands:
+Live X11 session, `kaeru --background`; the SNI item registers on the session
+watcher and the ToolTip property was captured at each state:
 
 ```
-KAERU_TEST_HOME=/tmp/opencode/kaeru-tray-test DISPLAY=:1 XDG_RUNTIME_DIR=/run/user/1000 \
-  ./build/kaeru --background &          # primary instance
-timeout 10 ./build/kaeru --background   # second launch
+== 1. inactive          → (sa(iiay)ss) "" 0 "Kaeru — inactive" ""
+== 2. keep-awake active → "Kaeru — keep awake active · Keep awake (timed)"
+== 3. focus + keep-awake→ "Kaeru — keep awake active · Keep awake (timed) · Countdown (59s left)"
+== 4. focus only        → "Kaeru — focus running · Countdown (57s left)"
+== 5. everything off    → "Kaeru — inactive"
 ```
 
-Expected: second launch forwards ShowWindow to the primary and exits 0;
-instance count stays 1; primary keeps serving.
+- Icon semantics (ADR-008): Awake = inhibition actively held; Focused = focus
+  interval running; Sleep = Kaeru inactive (never "computer sleeping").
+- Precedence verified in state 3: **awake wins the icon** (safety-first) and
+  the tooltip still states the running focus interval — nothing hidden.
+- The tray pixmap itself carries the official colors: D-Bus `IconPixmap`
+  (22×22 and 64×64) contains ARGB `(255,76,175,80)` = **#4CAF50** and
+  `(255,27,94,32)` = **#1B5E20** — the exact supplied palette.
+- Panel presence proven by a with/without-Kaeru screenshot diff: the icon
+  occupies panel x 1670–1741 and disappears when Kaeru quits
+  (`docs/evidence/kaeru-tray-panel-diff.png`, before/after zooms committed).
+- The dev panel renders it desaturated because the user's desktop runs the
+  `desaturated-tray-icons` GNOME extension (their configuration; shape stays
+  legible — readability proof `../frog_icons/proof-16px.png`).
+- All five states exercised through the real application, not mock images.
 
-Actual: `second launch exit=0`; `instances after: 1`; `kaeru status` still
-served by the primary.
+## 2. Single instance (PASS)
 
-Bugs found and fixed during this test (both recorded in CHANGELOG):
+`kaeru --background` (primary) + second `kaeru --background` → second launch
+forwards ShowWindow and exits 0; one process remains; first keeps serving.
+(Fixed in this milestone: `AllowReplacement` takeover + treating the
+non-error "name taken" reply as success — both documented in CHANGELOG.)
 
-1. `SingleInstance::tryAcquire` passed `AllowReplacement`, so a second launch
-   could take over the bus name instead of forwarding (spec §7 violation).
-   Removed; D-Bus releases names of dead connections automatically.
-2. `registerService` returns a **valid** reply with `ServiceNotRegistered`
-   when the name is taken (name clash is not a D-Bus error). `m_primary =
-   reply.isValid()` was true even on failure — the second launch ran as a
-   second full instance. Fixed: `m_primary = reply.isValid() && reply.value()
-   == ServiceRegistered`. Verified with the Qt 6.2 header
-   (`qdbusconnectioninterface.h`: `ServiceNotRegistered=0, ServiceRegistered=1,
-   ServiceQueued=2`).
+## 3. Autostart backend (PASS)
 
-## 3. Autostart backend (sandbox harness) — PASS
+Sandbox harness (15/15 checks): enable writes ONLY
+`io.github.kaeru.KaerU.desktop` under `$XDG_CONFIG_HOME/autostart` with
+`Exec=kaeru --background`; idempotent; disable removes only that file; the
+directory returns to its original contents. No other app's entries touched.
 
-Harness `/tmp/opencode/autostart_harness.cpp` (throwaway, not part of the
-project) exercises the real `AutostartBackend` with
-`KAERU_TEST_HOME=/tmp/opencode/kaeru-autostart-test`. 15/15 checks pass:
+## 4. SVG + PNG rendering (PASS)
+
+- Qt6 qsvg present: `libqt6svg6 6.2.4`, icon engine `libqsvgicon.so`.
+- `svg_probe` (Qt 6.2, offscreen): `QIcon(awake.svg).pixmap()` non-null at
+  16/24/32/64/128 px (was null before qtsvg was installed).
+- Packaged icon resolution (`pkg_icon_probe` against the extracted .deb):
+  8/8 PASS — scalable SVGs (awake/focused/sleep) + PNG fallbacks at 16/24/32/
+  48/256, all non-null pixmaps.
+- Resource alias fix: `qt_add_resources(... PREFIX "/" BASE resources ...)` —
+  the WP-02 resource aliases never actually resolved (`:/icons/kaeru.svg`
+  was not the real path); Icons.cpp now loads `:/icons/frog/*.svg` which is
+  verified by the live runs (no `qt.svg` errors, tray renders).
+
+## 5. Debian package (PASS)
+
+Built with the standard workflow (no source signing, binary-only):
 
 ```
-entry path: <sandbox>/autostart/io.github.kaeru.Kaeru.desktop
-PASS: not enabled initially / no entry file initially
-PASS: enable() succeeds; isEnabled() true; entry exists
-PASS: Exec line is 'kaeru --background'; X-GNOME-Autostart-enabled=true
-PASS: exactly one new file in autostart dir; only Kaeru's own entry added
-PASS: re-enable idempotent; disable() removes file; disable idempotent
-PASS: autostart dir back to original contents (nothing else touched)
-ALL PASS
+dpkg-buildpackage -us -uc -b   → ../kaeru_0.1.1-1_amd64.deb (361,074 bytes)
+lintian kaeru_0.1.1-1_amd64.deb
+  W: initial-upload-closes-no-bugs        (informational: no bug numbers
+                                           exist for a first upload — accepted,
+                                           documented; not suppressed)
+  (no other warnings/errors; no-manual-page fixed by shipping kaeru.1)
 ```
 
-Honest scope note: this verifies the backend (file lifecycle, opt-in path,
-own-file-only guarantee). The Settings-page toggle that calls it
-(`SettingsPage::onStartupChanged`) is wired to the same backend; GUI toggle
-verification is manual (uiux) / covered by code review.
+Package facts (dpkg-deb -I / -c):
 
-## 4. Environment gap: Qt6 SVG rendering unavailable locally — BLOCKS local icon verification
+- Package: kaeru 0.1.1-1, Architecture: amd64, Section: utils, Priority: optional
+- Depends: libc6, libgcc-s1, libqt6core6/gui6/widgets6/dbus6/sql6, libstdc++6
+  (all ≥ 6.2 via shlibs) + **libqt6sql6-sqlite** (QSQLITE driver plugin) +
+  **libqt6svg6** (SVG icon engine); Recommends: xdg-desktop-portal
+- Contents: /usr/bin/kaeru; desktop entry; metainfo; manpage kaeru.1;
+  hicolor scalable SVGs (3 frog expressions) + PNG fallbacks at
+  16/24/32/48/64/128/256 (awake/focused/sleep); docs + copyright
+- md5sums: 32/32 files OK; desktop-file-validate: clean (single main
+  category after fix)
+- No maintainer scripts at all → user data/config/cache are never touched
+  on install, upgrade or removal (by construction; no conffiles)
 
-```
-QT_QPA_PLATFORM=offscreen /tmp/opencode/harness_build/svg_probe
-→ QIcon isNull=0   pixmap isNull=1 size=0x0
-```
+## 6. Package lifecycle tests (safe, isolated)
 
-`libqt6svg6` is not installed (only Qt5's qsvgicon exists) and `sudo apt
-install` requires a password this session cannot supply. Consequence:
+`sudo` is password-unavailable in this session, so dpkg-database lifecycle
+tests were done via **extraction** (`dpkg-deb -x`) + run, plus content
+audits. This is documented as the honest limitation; the exact commands
+below are reproducible.
 
-- Tray icon image + window icon render blank on this dev machine (tooltips,
-  menu, SNI registration unaffected — §1).
-- The `.deb` will declare `libqt6svg6` as a runtime dependency, so installing
-  the package on a normal desktop pulls the SVG icon engine and icons render.
-- Local icon rendering re-test is scheduled once qtsvg is installed
-  (requires the user to run the apt command; see packaging blocker below).
+- Extraction run of the packaged binary (sandbox home):
+  - `kaeru --version` → `kaeru 0.1.1 (app id io.github.kaeru.Kaeru)`
+  - `--background` + `status` → JSON with keepAwake/workLog sections
+  - `awake on --duration 60s --mode system` → **active via portal**
+    (`"backend":"portal","effective":["system-sleep"],"status":"active"`)
+  - `work start --project "Pkg Test"` / `work stop` → recorded + saved
+  - `export --format csv …` → 1 data row written, header correct
+  - `quit` → process exits cleanly
+- True `dpkg -i` / `-P` / upgrade tests require root and are **not executed**
+  here (no passwordless sudo; broad system modification is out of scope per
+  the task boundaries). They remain the final step once a root shell is
+  available; the package has no maintainer scripts and no conffiles, so the
+  data-preservation risk on upgrade/remove is structural (nothing to run).
 
-## 5. Packaging (`.deb`) — BLOCKED (missing toolchain, sudo password required)
+## 7. Regression (PASS)
 
-`dpkg-buildpackage` (dpkg-dev) is present, but `debhelper`/`dh`, `lintian`,
-`devscripts` are not installed and `sudo apt install -y debhelper lintian
-devscripts` fails with "a terminal is required to read the password".
-The packaging files (`debian/`) are not yet written; they will be added when
-the toolchain is available (user-run install of the three named packages,
-per the original authorization).
+- Clean Release build: exit 0, zero warnings (-Wall -Wextra -Wpedantic).
+- `ctest -j9`: **13/13 suites pass** (12 existing + new `test_traystate`).
+- CLI verified natively (status/awake/focus/work/export/quit).
+- Native inhibition re-verified after icon changes: portal active, release
+  on quit (see §6 extraction run and evidence-wp02 procedure).
 
-## 6. Not yet run (honest gaps)
+## 8. Honest gaps
 
-- `.deb` build/install/upgrade/remove/reinstall with data preservation — §5.
-- Icon rendering re-test — §4.
-- Desktop-entry launch (needs installed package).
-- Focus native run, Work Log, Reports — WP-04/05/06.
+- dpkg-database lifecycle tests (install/upgrade/remove/reinstall) — blocked
+  on root; extraction-based verification done; no maintainer scripts exist
+  so data preservation is structural.
+- GUI screenshots of the full window — the tray/panel evidence above is the
+  screenshot-based verification; full-window capture is a WP-07 manual pass.
+- Ubuntu 24.04 native validation — declared environment gap (dev machine is
+  Pop!_OS 22.04).

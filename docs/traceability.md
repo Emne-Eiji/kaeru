@@ -8,16 +8,16 @@ Status vocabulary: `implemented`, `tested` (with evidence), `partial`, `unavaila
 | KAE-SAFE-001 | No fake input/presence falsification/monitoring (§3) | ADR-002, privacy.md | nothing implements input synthesis; code audit | code review WP-07; grep audit | enforced by design |
 | KAE-AWAKE-001 | Native inhibition with verified lifecycle (§6.1) | ADR-002 | PortalInhibitBackend, LogindInhibitBackend | docs/evidence-wp02.md §2.1–2.3 (real portal Response(0) + systemd-inhibit block delta + logind sleep:block); integration re-run per release | tested |
 | KAE-AWAKE-002 | Request registry, overlap, suppression precedence (§6.2) | architecture.md §3.1 | InhibitionRegistry/Coordinator | test_registry, test_coordinator (all pass); suppression/quit native check evidence-wp02 §2.4 | tested |
-| KAE-LIFE-001 | Single instance, autostart, safe startup/quit (§7) | ADR-005 | Application, ControlService, AutostartBackend | quit release verified natively (evidence-wp02 §2.4); single-instance/autostart tests WP-03 | partial |
-| KAE-UI-001 | Approved UI/UX system, accessible states (§8) | uiux-design.md, ADR-007 | ui/* pages + theme + a11y | GUI tests + screenshots | WP-01→07 |
+| KAE-LIFE-001 | Single instance, autostart, safe startup/quit (§7) | ADR-005 | Application, ControlService, AutostartBackend | single-instance + autostart + quit-release verified natively (evidence-wp03.md); frog tray identity (ADR-008) | tested |
+| KAE-UI-001 | Approved UI/UX system, accessible states (§8) | uiux-design.md, ADR-007 | ui/* pages + theme + a11y | GUI tests + screenshots | WP-01→07 (icon identity ADR-008 added) |
 | KAE-FOCUS-001 | Countdown + Pomodoro state machine (§6.3) | ADR-003 | FocusController, TimerEngine | test_focus, test_timerengine (all pass); native focus run + notification evidence docs/evidence-wp04.md | tested |
 | KAE-WORK-001 | Manual work session/project/segment tracking (§6.4) | architecture.md §3.3 | WorkSessionManager + repositories | test_workmanager (10 tests); native lifecycle + crash recovery docs/evidence-wp05.md | tested |
 | KAE-DATA-001 | SQLite integrity, recovery, migration (§10) | ADR-004 | storage/*, RecoveryManager | test_storage, test_worklog, test_workmanager (migrations, FK, totals, checkpoints, conservative recovery) | tested |
 | KAE-REPORT-001 | Reports, filters, CSV (§6.4) | architecture.md | ReportsPage, CsvExport, SessionRepository totals | test_reports, test_csv; native CLI export docs/evidence-wp06.md | tested |
 | KAE-PRIV-001 | Local-first privacy, no telemetry (§2/§10) | privacy.md | no network code | audit: no sockets; privacy.md | enforced |
-| KAE-PKG-001 | Maintainable .deb + lifecycle tests (§13) | testing.md §4 | debian/* | packaging tests WP-03/07 | WP-03/07 |
-| KAE-TEST-001 | Honest unit/integration/packaging evidence (§14) | testing.md | tests/* | 12 Qt Test suites (12/12 pass, zero warnings); native evidence docs/evidence-wp02..06.md; packaging evidence pending toolchain (docs/delivery-report.md) | tested (packaging partial) |
-| KAE-REL-001 | v1.0 release gate (§14) | testing.md §release gate | — | clean Release build, 12/12 tests, staged tarball + checksums (dist/); `.deb` blocked on missing toolchain — see delivery report | partial (release candidate ready) |
+| KAE-PKG-001 | Maintainable .deb + lifecycle tests (§13) | testing.md §4 | debian/* | kaeru_0.1.1-1_amd64.deb built (debhelper); lintian clean (1 informational); extraction-run verified; dpkg-database lifecycle pending root (evidence-wp03.md §5–6) | tested (build) / lifecycle pending |
+| KAE-TEST-001 | Honest unit/integration/packaging evidence (§14) | testing.md | tests/* | 13 Qt Test suites (13/13 pass, zero warnings); native evidence docs/evidence-wp02..06.md; packaging evidence docs/evidence-wp03.md | tested |
+| KAE-REL-001 | v1.0 release gate (§14) | testing.md §release gate | — | clean Release build, 13/13 tests, tarball + .deb + checksums (dist/); dpkg lifecycle pending root — see delivery report | partial (release candidate ready) |
 
 ## Open decisions register
 
@@ -30,3 +30,4 @@ Status vocabulary: `implemented`, `tested` (with evidence), `partial`, `unavaila
 | Checkpoint interval | 60 s | RecoveryManager |
 | Idle detection | out of 1.0; honest "unavailable" | capability matrix |
 | Tray | SNI via QSystemTrayIcon + fallback (ADR-006) | docs/decisions/ADR-006 |
+| Icon identity | official frog expressions (ADR-008) | docs/decisions/ADR-008-frog-icon-identity.md |

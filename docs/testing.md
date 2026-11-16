@@ -17,10 +17,11 @@
 | test_storage | migrations versioned/idempotent, project CRUD + guards, session round-trip, FK integrity, backup-before-migration, WAL + integrity |
 | test_csv | quoting, formula-injection neutralization (=,+,-,@,tab,CR), header + open-segment rows, write/truncate + row count, filename convention |
 | test_reports | per-project totals, focus totals, open segments never count |
+| test_traystate | tray presentation mapping: all state combinations, precedence, honesty rules (ADR-008) |
 | test_cliparser | grammar, malformed values rejected, defaults, missing operands |
 
 Run: `ctest --test-dir build` (offscreen + `KAERU_TEST_HOME` sandbox set by
-the suite itself; no user data touched). 12/12 suites pass on the clean
+the suite itself; no user data touched). 13/13 suites pass on the clean
 Release build.
 
 ## 2. Integration tests (real desktop, primary environment)
