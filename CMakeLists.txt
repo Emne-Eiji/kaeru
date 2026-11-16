@@ -103,7 +103,7 @@ target_link_libraries(kaeru PRIVATE kaeru_ui Qt6::Widgets)
 
 # ---- unit tests ----
 enable_testing()
-foreach(t IN ITEMS clocks registry coordinator timerengine focus worklog storage csv cliparser notify workmanager)
+foreach(t IN ITEMS clocks registry coordinator timerengine focus worklog storage csv cliparser notify workmanager reports)
   add_executable(test_${t} tests/unit/test_${t}.cpp)
   target_link_libraries(test_${t} PRIVATE kaeru_app kaeru_ui Qt6::Test)
   add_test(NAME test_${t} COMMAND test_${t})

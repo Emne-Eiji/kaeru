@@ -72,6 +72,22 @@ public:
                                   int utcOffsetSeconds, QString* error = nullptr) const;
 
     // --- focus sessions (spec: separate table) ---
+    struct FocusTotal {
+        qint64 achievedMs = 0;
+        int count = 0;
+    };
+    FocusTotal focusTotals(const QDateTime& fromUtc, const QDateTime& toUtc,
+                           QString* error = nullptr) const;
+
+    // Per-project totals (closed segments only), ordered by name.
+    struct ProjectTotal {
+        QString name;
+        qint64 workMs = 0;
+        qint64 breakMs = 0;
+        int sessionCount = 0;
+    };
+    QList<ProjectTotal> totalsByProject(const QDateTime& fromUtc, const QDateTime& toUtc,
+                                        QString* error = nullptr) const;
     bool insertFocusSession(const QDateTime& startUtc, const QDateTime& endUtc,
                             qint64 plannedMs, qint64 achievedMs,
                             const QString& phase, const QString& mode,

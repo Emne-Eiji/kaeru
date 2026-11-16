@@ -13,7 +13,7 @@ Status vocabulary: `implemented`, `tested` (with evidence), `partial`, `unavaila
 | KAE-FOCUS-001 | Countdown + Pomodoro state machine (§6.3) | ADR-003 | FocusController, TimerEngine | test_focus, test_timerengine (all pass); native focus run + notification evidence docs/evidence-wp04.md | tested |
 | KAE-WORK-001 | Manual work session/project/segment tracking (§6.4) | architecture.md §3.3 | WorkSessionManager + repositories | test_workmanager (10 tests); native lifecycle + crash recovery docs/evidence-wp05.md | tested |
 | KAE-DATA-001 | SQLite integrity, recovery, migration (§10) | ADR-004 | storage/*, RecoveryManager | test_storage, test_worklog, test_workmanager (migrations, FK, totals, checkpoints, conservative recovery) | tested |
-| KAE-REPORT-001 | Reports, filters, CSV (§6.4) | architecture.md | ReportsPage, CsvExport | test_csv + reconciliation tests | WP-06 |
+| KAE-REPORT-001 | Reports, filters, CSV (§6.4) | architecture.md | ReportsPage, CsvExport, SessionRepository totals | test_reports, test_csv; native CLI export docs/evidence-wp06.md | tested |
 | KAE-PRIV-001 | Local-first privacy, no telemetry (§2/§10) | privacy.md | no network code | audit: no sockets; privacy.md | enforced |
 | KAE-PKG-001 | Maintainable .deb + lifecycle tests (§13) | testing.md §4 | debian/* | packaging tests WP-03/07 | WP-03/07 |
 | KAE-TEST-001 | Honest unit/integration/packaging evidence (§14) | testing.md | tests/* | docs/testing evidence records | all |

@@ -482,4 +482,63 @@ bool SessionRepository::deleteCheckpointsForSession(qint64 sessionId, QString* e
     return true;
 }
 
+SessionRepository::FocusTotal SessionRepository::focusTotals(const QDateTime& fromUtc,
+                                                             const QDateTime& toUtc,
+                                                             QString* error) const
+{
+    FocusTotal out;
+    QSqlQuery q(m_db);
+    q.prepare(QStringLiteral(
+        "SELECT COUNT(*), SUM(achieved_ms) FROM focus_sessions "
+        "WHERE ended_at IS NOT NULL AND started_at >= :from AND started_at <= :to"));
+    q.bindValue(QStringLiteral(":from"), iso(fromUtc));
+    q.bindValue(QStringLiteral(":to"), iso(toUtc));
+    if (!q.exec() || !q.next()) {
+        if (error)
+            *error = q.lastError().text();
+        return out;
+    }
+    out.count = q.value(0).toInt();
+    out.achievedMs = q.value(1).toLongLong();
+    return out;
+}
+
+QList<SessionRepository::ProjectTotal> SessionRepository::totalsByProject(
+    const QDateTime& fromUtc, const QDateTime& toUtc, QString* error) const
+{
+    QList<ProjectTotal> out;
+    QSqlQuery q(m_db);
+    q.prepare(QStringLiteral(
+        "SELECT p.name, "
+        "SUM(CASE WHEN g.kind = 'work' THEN "
+        "  CAST(ROUND((julianday(g.ended_at) - julianday(g.started_at)) * 86400000) AS INTEGER) "
+        "ELSE 0 END), "
+        "SUM(CASE WHEN g.kind IN ('break','paused') THEN "
+        "  CAST(ROUND((julianday(g.ended_at) - julianday(g.started_at)) * 86400000) AS INTEGER) "
+        "ELSE 0 END), "
+        "COUNT(DISTINCT g.session_id) "
+        "FROM session_segments g "
+        "JOIN sessions s ON s.id = g.session_id "
+        "JOIN projects p ON p.id = s.project_id "
+        "WHERE g.ended_at IS NOT NULL AND g.started_at >= :from AND g.started_at <= :to "
+        "AND g.ended_at >= g.started_at "
+        "GROUP BY p.id ORDER BY p.name COLLATE NOCASE"));
+    q.bindValue(QStringLiteral(":from"), iso(fromUtc));
+    q.bindValue(QStringLiteral(":to"), iso(toUtc));
+    if (!q.exec()) {
+        if (error)
+            *error = q.lastError().text();
+        return out;
+    }
+    while (q.next()) {
+        ProjectTotal t;
+        t.name = q.value(0).toString();
+        t.workMs = q.value(1).toLongLong();
+        t.breakMs = q.value(2).toLongLong();
+        t.sessionCount = q.value(3).toInt();
+        out.append(t);
+    }
+    return out;
+}
+
 } // namespace kaeru

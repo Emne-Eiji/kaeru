@@ -2,12 +2,15 @@
 #include "Application.h"
 #include "Paths.h"
 #include "WorkSessionManager.h"
+#include "storage/CsvExport.h"
 
 #include "core/Duration.h"
 
 #include <QCoreApplication>
+#include <QDate>
 #include <QDir>
 #include <QStandardPaths>
+#include <QTime>
 
 namespace kaeru {
 
@@ -157,8 +160,39 @@ CommandResult CommandRouter::resumeAll()
 
 CommandResult CommandRouter::exportCsv(const QVariantMap& options)
 {
-    Q_UNUSED(options)
-    return CommandResult::failure(4, QStringLiteral("Export is not available yet (delivered in a later milestone)"));
+    if (!m_app->storageReady() || !m_app->sessions())
+        return CommandResult::failure(4, QStringLiteral("Work Log storage is unavailable"));
+    // Dates were normalized by the CLI parser (YYYY-MM-DD) or come from the
+    // GUI as ISO strings.
+    bool okFrom = false, okTo = false;
+    const QDate from = QDate::fromString(options.value(QStringLiteral("from")).toString(),
+                                         Qt::ISODate);
+    const QDate to = QDate::fromString(options.value(QStringLiteral("to")).toString(),
+                                       Qt::ISODate);
+    okFrom = from.isValid();
+    okTo = to.isValid();
+    if (!okFrom || !okTo)
+        return CommandResult::failure(2, QStringLiteral("--from/--to must be YYYY-MM-DD"));
+    if (from > to)
+        return CommandResult::failure(2, QStringLiteral("--from must not be after --to"));
+
+    const QDateTime fromUtc = QDateTime(from, QTime(0, 0), Qt::UTC);
+    const QDateTime toUtc = QDateTime(to, QTime(23, 59, 59, 999), Qt::UTC);
+
+    QString path = options.value(QStringLiteral("output")).toString();
+    if (path.isEmpty())
+        path = QDir::current().filePath(CsvExport::fileNameFor(from, to));
+
+    QString err;
+    const QList<CsvExport::Row> rows =
+        CsvExport::gather(*m_app->sessions(), *m_app->projects(), fromUtc, toUtc, &err);
+    if (!err.isEmpty())
+        return CommandResult::failure(4, err);
+    int rowCount = 0;
+    if (!CsvExport::write(CsvExport::serialize(rows), path, &err, &rowCount))
+        return CommandResult::failure(4, err);
+    return CommandResult::success(
+        QStringLiteral("Exported %1 row(s) to %2").arg(rowCount).arg(path));
 }
 
 CommandResult CommandRouter::diagnostics(bool asJson) const

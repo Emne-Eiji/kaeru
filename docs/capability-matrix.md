@@ -35,5 +35,5 @@
 | Keep Awake (manual, timed, indefinite w/ warning) | yes | request registry, verified lifecycles |
 | Focus (countdown + Pomodoro) | yes | suspend-inclusive countdown, suspend-exclusive work accrual |
 | Work Log (manual-first, projects, segments) | yes | implemented + native-tested WP-05; recovery conservative (never invents work) |
-| Reports + CSV export | yes | formula-injection protection |
+| Reports + CSV export | yes | implemented + native-tested WP-06; formula-injection guard verified |
 | Diagnostics | yes | live backend state |
