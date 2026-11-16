@@ -11,6 +11,7 @@ struct CliInvocation {
     enum class Mode : quint8 { Gui, GuiBackground, Command, Help, Version };
 
     Mode mode = Mode::Gui;
+    bool awakeOnLogin = false;   // start hidden and enable Keep Awake
     QString command;            // e.g. "status", "awake"
     QStringList operands;       // sub-operands e.g. ["on"]
     QVariantMap options;        // parsed --key value pairs

@@ -30,18 +30,47 @@ CliInvocation CliParser::parse(const QStringList& args)
     if (args.isEmpty())
         return inv; // GUI mode
 
-    const QString first = args.first();
+    // Global startup flags may be combined (autostart uses
+    // "--background --awake-on-login"). They are accepted only as a leading
+    // block, never mixed with a command.
+    int index = 0;
+    bool sawGlobal = false;
+    while (index < args.size()) {
+        const QString a = args.at(index);
+        if (a == QStringLiteral("--background")) {
+            inv.mode = CliInvocation::Mode::GuiBackground;
+            sawGlobal = true;
+            ++index;
+            continue;
+        }
+        if (a == QStringLiteral("--awake-on-login")) {
+            inv.awakeOnLogin = true;
+            inv.mode = CliInvocation::Mode::GuiBackground;
+            sawGlobal = true;
+            ++index;
+            continue;
+        }
+        if (a == QStringLiteral("--help") || a == QStringLiteral("-h")) {
+            inv.mode = CliInvocation::Mode::Help;
+            return inv;
+        }
+        if (a == QStringLiteral("--version")) {
+            inv.mode = CliInvocation::Mode::Version;
+            return inv;
+        }
+        break;
+    }
+    if (sawGlobal && index < args.size()) {
+        inv.error = QStringLiteral("unexpected argument '%1' after startup flags").arg(args.at(index));
+        return inv;
+    }
+    if (index >= args.size())
+        return inv;
 
-    if (first == QStringLiteral("--help") || first == QStringLiteral("-h") || first == QStringLiteral("help")) {
+    const QString first = args.at(index);
+
+    if (first == QStringLiteral("help")) {
         inv.mode = CliInvocation::Mode::Help;
-        return inv;
-    }
-    if (first == QStringLiteral("--version")) {
-        inv.mode = CliInvocation::Mode::Version;
-        return inv;
-    }
-    if (first == QStringLiteral("--background")) {
-        inv.mode = CliInvocation::Mode::GuiBackground;
         return inv;
     }
 
@@ -53,14 +82,14 @@ CliInvocation CliParser::parse(const QStringList& args)
 
     if (!knownCommands.contains(first)) {
         inv.mode = CliInvocation::Mode::Command;
-        inv.error = QStringLiteral("unknown command '%1' (try: status, awake, focus, work, export, pause-all, diagnostics, open, quit)").arg(first);
+        inv.error = QStringLiteral("unknown command '%1' (try: status, awake, diagnostics, open, quit)").arg(first);
         return inv;
     }
 
     inv.mode = CliInvocation::Mode::Command;
     inv.command = first;
 
-    for (int i = 1; i < args.size(); ++i) {
+    for (int i = index + 1; i < args.size(); ++i) {
         const QString a = args.at(i);
         if (a == QStringLiteral("--help") || a == QStringLiteral("-h")) {
             inv.mode = CliInvocation::Mode::Help;

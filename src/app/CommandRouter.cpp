@@ -36,16 +36,19 @@ CommandResult CommandRouter::status(bool asJson) const
     const QString reason = ka.value(QStringLiteral("reason")).toString();
     if (!reason.isEmpty())
         line += QStringLiteral("\nReason: %1").arg(reason);
-
-    const QVariantMap focus = json.value(QStringLiteral("focus")).toMap();
-    line += QStringLiteral("\nFocus: %1").arg(focus.value(QStringLiteral("phase")).toString());
+    const QString limitation = ka.value(QStringLiteral("limitation")).toString();
+    if (!limitation.isEmpty())
+        line += QStringLiteral("\nNote: %1").arg(limitation);
+    const QString error = ka.value(QStringLiteral("error")).toString();
+    if (!error.isEmpty())
+        line += QStringLiteral("\nError: %1").arg(error);
     return CommandResult::success(line, json);
 }
 
 CommandResult CommandRouter::awakeOn(const QVariantMap& options)
 {
     if (!m_app->appState()->isModuleEnabled(Module::KeepAwake))
-        return CommandResult::failure(5, QStringLiteral("Keep Awake module is disabled (enable in Settings)"));
+        return CommandResult::failure(5, QStringLiteral("Keep Awake is unavailable in this build"));
 
     // Manual suppression is cleared by an explicit user action to keep awake.
     m_app->resumeAutomaticRules();

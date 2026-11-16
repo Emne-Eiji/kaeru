@@ -31,6 +31,31 @@ private slots:
     {
         const CliInvocation inv = CliParser::parse({ QStringLiteral("--background") });
         QCOMPARE(inv.mode, CliInvocation::Mode::GuiBackground);
+        QCOMPARE(inv.awakeOnLogin, false);
+    }
+
+    void autostartFlagsCombine()
+    {
+        // Exact Exec line written by AutostartBackend.
+        CliInvocation inv = CliParser::parse({
+            QStringLiteral("--background"), QStringLiteral("--awake-on-login"),
+        });
+        QCOMPARE(inv.mode, CliInvocation::Mode::GuiBackground);
+        QCOMPARE(inv.awakeOnLogin, true);
+        QVERIFY(!inv.isUsageError());
+
+        // Order-independent and implies hidden startup.
+        inv = CliParser::parse({ QStringLiteral("--awake-on-login") });
+        QCOMPARE(inv.mode, CliInvocation::Mode::GuiBackground);
+        QCOMPARE(inv.awakeOnLogin, true);
+    }
+
+    void startupFlagsCannotMixWithCommands()
+    {
+        const CliInvocation inv = CliParser::parse({
+            QStringLiteral("--background"), QStringLiteral("status"),
+        });
+        QVERIFY(inv.isUsageError());
     }
 
     void statusCommand()

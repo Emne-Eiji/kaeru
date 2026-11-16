@@ -54,56 +54,27 @@ static int runCli(const CliInvocation& inv)
         return call(QStringLiteral("Diagnostics"));
     if (inv.command == QStringLiteral("awake")) {
         const QString verb = inv.operands.isEmpty() ? QString() : inv.operands.first();
-        if (verb == QStringLiteral("on"))
+        if (verb == QStringLiteral("on")) {
+            const QVariant duration = inv.options.value(QStringLiteral("durationMs"));
             return call(QStringLiteral("AwakeOn"),
-                { inv.options.value(QStringLiteral("durationMs"), 0.0).toLongLong() / 1000.0,
+                { duration.isValid() ? duration.toLongLong() / 1000.0 : 0.0,
                     inv.options.value(QStringLiteral("mode"), QStringLiteral("both")).toString() });
+        }
+        if (verb == QStringLiteral("indefinite"))
+            return call(QStringLiteral("AwakeOn"), { 0.0, QStringLiteral("both") });
         if (verb == QStringLiteral("off"))
             return call(QStringLiteral("AwakeOff"));
         std::cout << "usage: kaeru awake on --duration 30m --mode system|display|both\n"
+                     "       kaeru awake indefinite\n"
                      "       kaeru awake off\n";
         return 2;
     }
-    if (inv.command == QStringLiteral("focus")) {
-        const QString verb = inv.operands.isEmpty() ? QString() : inv.operands.first();
-        if (verb == QStringLiteral("start"))
-            return call(QStringLiteral("FocusStart"),
-                { inv.options.value(QStringLiteral("durationMs"), 0.0).toLongLong() / 1000.0 });
-        if (verb == QStringLiteral("pause"))
-            return call(QStringLiteral("FocusPause"));
-        if (verb == QStringLiteral("resume"))
-            return call(QStringLiteral("FocusResume"));
-        if (verb == QStringLiteral("skip"))
-            return call(QStringLiteral("FocusSkip"));
-        if (verb == QStringLiteral("stop"))
-            return call(QStringLiteral("FocusStop"));
-        if (verb == QStringLiteral("extend"))
-            return call(QStringLiteral("FocusExtend"),
-                { inv.options.value(QStringLiteral("durationMs"), 5 * 60 * 1000.0).toLongLong() / 1000.0 });
-        std::cout << "usage: kaeru focus start|pause|resume|skip|stop|extend [--duration 25m]\n";
+    if (inv.command == QStringLiteral("focus") || inv.command == QStringLiteral("work")
+        || inv.command == QStringLiteral("export") || inv.command == QStringLiteral("pause-all")) {
+        std::cout << "This feature is not part of Kaeru " << KAERU_VERSION
+                  << ". This release focuses on dependable Keep Awake.\n";
         return 2;
     }
-    if (inv.command == QStringLiteral("work")) {
-        const QString verb = inv.operands.isEmpty() ? QString() : inv.operands.first();
-        if (verb == QStringLiteral("start"))
-            return call(QStringLiteral("WorkStart"), { inv.options.value(QStringLiteral("project")).toString() });
-        if (verb == QStringLiteral("pause"))
-            return call(QStringLiteral("WorkPause"));
-        if (verb == QStringLiteral("resume"))
-            return call(QStringLiteral("WorkResume"));
-        if (verb == QStringLiteral("stop"))
-            return call(QStringLiteral("WorkStop"));
-        std::cout << "usage: kaeru work start --project \"Example\" | pause | resume | stop\n";
-        return 2;
-    }
-    if (inv.command == QStringLiteral("export")) {
-        return call(QStringLiteral("ExportCsv"),
-            { inv.options.value(QStringLiteral("output")).toString(),
-                inv.options.value(QStringLiteral("from")).toString(),
-                inv.options.value(QStringLiteral("to")).toString() });
-    }
-    if (inv.command == QStringLiteral("pause-all"))
-        return call(QStringLiteral("PauseAll"));
     if (inv.command == QStringLiteral("diagnostics"))
         return call(QStringLiteral("Diagnostics"));
     if (inv.command == QStringLiteral("open")) {
@@ -125,20 +96,21 @@ static int runCli(const CliInvocation& inv)
 
 static void printHelp()
 {
-    std::cout << "Kaeru — keep awake, focus and work log utility\n\n"
+    std::cout << "Kaeru — dependable keep awake for your desktop\n\n"
                  "Usage:\n"
                  "  kaeru                       open the application window\n"
-                 "  kaeru --background          start without showing the window\n"
-                 "  kaeru status [--json]       show current status\n"
+                 "  kaeru --background          start hidden; the tray owns the window\n"
+                 "  kaeru status [--json]       show current Keep Awake status\n"
                  "  kaeru awake on --duration 30m --mode system|display|both\n"
-                 "  kaeru awake off             turn off now (suppresses automatic requests)\n"
-                 "  kaeru focus start [--duration 25m] | pause | resume | skip | extend | stop\n"
-                 "  kaeru work start --project \"Example\" | pause | resume | stop\n"
-                 "  kaeru export --format csv --from 2026-11-01 --to 2026-11-30 [--output FILE]\n"
-                 "  kaeru pause-all | diagnostics [--json] | open | quit\n"
+                 "  kaeru awake indefinite      keep awake until turned off\n"
+                 "  kaeru awake off             turn off now\n"
+                 "  kaeru diagnostics [--json]  capability and backend details\n"
+                 "  kaeru open | quit           show the window / quit a running Kaeru\n"
                  "  kaeru --version | --help\n\n"
-                 "Durations accept 90s, 30m, 1h30m. Exit codes: 0 ok, 2 usage, 3 not running,\n"
-                 "4 failed, 5 denied.\n";
+                 "Durations accept 90s, 30m, 1h30m. Choosing a new duration replaces\n"
+                 "the current request. Focus, Work Log and Reports are deferred and\n"
+                 "not available in this release. Exit codes: 0 ok, 2 usage, 3 not\n"
+                 "running, 4 failed, 5 denied.\n";
 }
 
 int main(int argc, char* argv[])
@@ -184,6 +156,11 @@ int main(int argc, char* argv[])
         instance.activateExisting();
         return 0;
     }
+
+    // Autostart entry: "--background --awake-on-login" starts silently and
+    // immediately requests an indefinite Keep Awake session.
+    if (inv.awakeOnLogin)
+        kaeruApp.awakeIndefinite(QStringLiteral("Keep awake (started at login)"));
 
     MainWindow window(&kaeruApp);
     ControlService* control = new ControlService(&kaeruApp);
