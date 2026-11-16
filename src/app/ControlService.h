@@ -31,6 +31,7 @@ public slots:
     QString FocusExtend(double seconds);
     QString WorkStart(const QString& project);
     QString WorkPause();
+    QString WorkResume();
     QString WorkStop();
     QString PauseAll();
     QString ResumeAll();

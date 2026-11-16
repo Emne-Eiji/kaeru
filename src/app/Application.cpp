@@ -9,7 +9,9 @@
 #include "platform/PortalInhibitBackend.h"
 #include "platform/ThemeWatcher.h"
 
+#include "WorkSessionManager.h"
 #include "core/NotifyPolicy.h"
+#include "storage/Migrations.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -40,6 +42,7 @@ Application::Application(bool backgroundMode, QObject* parent)
     applyFocusSettingsFromSettings();
 
     setupBackends();
+    setupStorage();
 
     // Focus controller wiring: keep awake during focus/breaks per settings,
     // notifications on interval completion (policy-gated: notify option +
@@ -52,8 +55,12 @@ Application::Application(bool backgroundMode, QObject* parent)
     connect(m_focus, &FocusController::stoppedIdle, this, [this] { applyFocusKeepAwake(false, QString()); });
     connect(m_focus, &FocusController::intervalCompleted, this,
         [this](FocusController::Phase phase, qint64 planned, qint64 achieved) {
-            Q_UNUSED(achieved)
-            Q_UNUSED(planned)
+            // Optional link (spec §6.4): record completed work intervals into
+            // focus_sessions (never into work-log segments — no double
+            // counting) when the user enabled recording.
+            if (phase == FocusController::Phase::Work && m_work
+                && m_settings->focusRecordInWorkLog())
+                m_work->recordFocusWork(planned, achieved, nullptr);
             emit focusIntervalFinished(phase);
         });
 
@@ -143,6 +150,36 @@ Application::Application(bool backgroundMode, QObject* parent)
     startTickTimer();
 }
 
+void Application::setupStorage()
+{
+    m_db = std::make_unique<Database>();
+    QString err;
+    if (!m_db->open(&err) || !Migrations::apply(m_db->handle(), &err)) {
+        m_storageReady = false;
+        m_capabilities.update(QStringLiteral("work-log-storage"), {
+            QStringLiteral("work-log-storage"), QStringLiteral("Work Log storage (SQLite)"),
+            QStringLiteral("failed"), QString(),
+            tr("Cannot open the work-log database: %1").arg(err) });
+        return;
+    }
+    m_storageReady = true;
+    m_projects = std::make_unique<ProjectRepository>(m_db->handle());
+    m_sessions = std::make_unique<SessionRepository>(m_db->handle());
+    m_work = std::make_unique<WorkSessionManager>(m_sessions.get(), m_projects.get(), this);
+    m_work->setSettings(m_settings.get());
+
+    // Conservative recovery of interrupted sessions (never invents work).
+    const WorkSessionManager::RecoveryOutcome recovery = m_work->recoverInterrupted();
+    for (const QString& note : recovery.notes)
+        m_recoveryNotes << note;
+
+    m_capabilities.update(QStringLiteral("work-log-storage"), {
+        QStringLiteral("work-log-storage"), QStringLiteral("Work Log storage (SQLite)"),
+        QStringLiteral("available"), QStringLiteral("QSQLITE + WAL"),
+        tr("Database at %1; versioned migrations applied")
+            .arg(m_db->filePath()) });
+}
+
 void Application::setupBackends()
 {
     m_portalBackend = std::make_unique<PortalInhibitBackend>(this);
@@ -192,9 +229,8 @@ void Application::onTick()
     const QDateTime now = QDateTime::currentDateTimeUtc();
     m_timers.tick();
     m_inhibition.tick(now);
-
-    // Stop the low-frequency timer when idle? 1 Hz while visible is within
-    // resource targets; the tick is also needed for countdown displays.
+    if (m_work)
+        m_work->tick(); // 60 s recovery checkpoints while recording
 }
 
 void Application::onTimerCompleted(const QString& id, const QString& label)
@@ -209,6 +245,8 @@ void Application::onTimerCompleted(const QString& id, const QString& label)
 void Application::onPrepareForSleep(bool start)
 {
     m_timers.onPrepareForSleep(start);
+    if (m_work)
+        m_work->onSuspendBoundary(start);
     if (start) {
         // Explicitly requested awake sessions may legally persist — the
         // inhibitor fd stays owned by the kernel lock across suspend. Per
@@ -221,8 +259,8 @@ void Application::onPrepareForSleep(bool start)
 
 void Application::onLockChanged(bool locked)
 {
-    Q_UNUSED(locked)
-    // Work Log pause-on-lock is wired in WP-05 (WorkSessionManager).
+    if (m_work)
+        m_work->onLockChanged(locked);
 }
 
 void Application::awakeOn(qint64 durationMs, const QString& mode)
@@ -352,7 +390,10 @@ void Application::applyFocusSettingsFromSettings()
 
 void Application::prepareQuit()
 {
-    // Quit stops recording (WP-05 wiring) and releases every owned inhibitor.
+    // Quit stops recording (close segment + session — graceful shutdown, so
+    // no recovery is needed on next start) and releases every owned inhibitor.
+    if (m_work)
+        m_work->stop(nullptr);
     if (m_focus)
         m_focus->stop();
     m_inhibition.releaseAll();
@@ -378,6 +419,19 @@ QVariantMap Application::statusJson() const
     focus[QStringLiteral("phase")] = m_focus ? m_focus->phaseLabel() : QStringLiteral("idle");
     focus[QStringLiteral("remainingMs")] = m_focus ? m_focus->remainingMs() : qint64(-1);
     m[QStringLiteral("focus")] = focus;
+
+    QVariantMap work;
+    if (m_work && m_work->isActive()) {
+        const SessionRecord s = m_work->session();
+        work[QStringLiteral("active")] = true;
+        work[QStringLiteral("startedAt")] = s.startedUtc.toString(Qt::ISODate);
+        work[QStringLiteral("todayWorkMs")] = m_work->todayWorkMs();
+    } else {
+        work[QStringLiteral("active")] = false;
+        work[QStringLiteral("todayWorkMs")] = m_work ? m_work->todayWorkMs() : qint64(0);
+    }
+    work[QStringLiteral("recoveryNotes")] = QVariant(m_recoveryNotes);
+    m[QStringLiteral("workLog")] = work;
 
     m[QStringLiteral("background")] = m_background;
     return m;

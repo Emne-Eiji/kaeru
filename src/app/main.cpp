@@ -89,9 +89,11 @@ static int runCli(const CliInvocation& inv)
             return call(QStringLiteral("WorkStart"), { inv.options.value(QStringLiteral("project")).toString() });
         if (verb == QStringLiteral("pause"))
             return call(QStringLiteral("WorkPause"));
+        if (verb == QStringLiteral("resume"))
+            return call(QStringLiteral("WorkResume"));
         if (verb == QStringLiteral("stop"))
             return call(QStringLiteral("WorkStop"));
-        std::cout << "usage: kaeru work start --project \"Example\" | pause | stop\n";
+        std::cout << "usage: kaeru work start --project \"Example\" | pause | resume | stop\n";
         return 2;
     }
     if (inv.command == QStringLiteral("export")) {
@@ -131,7 +133,7 @@ static void printHelp()
                  "  kaeru awake on --duration 30m --mode system|display|both\n"
                  "  kaeru awake off             turn off now (suppresses automatic requests)\n"
                  "  kaeru focus start [--duration 25m] | pause | resume | skip | extend | stop\n"
-                 "  kaeru work start --project \"Example\" | pause | stop\n"
+                 "  kaeru work start --project \"Example\" | pause | resume | stop\n"
                  "  kaeru export --format csv --from 2026-11-01 --to 2026-11-30 [--output FILE]\n"
                  "  kaeru pause-all | diagnostics [--json] | open | quit\n"
                  "  kaeru --version | --help\n\n"

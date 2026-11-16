@@ -70,7 +70,7 @@ signals:
 
 private:
     void beginInterval(Phase phase, qint64 plannedMs);
-    void finishInterval();
+    void finishInterval(qint64 plannedMs = 0, qint64 achievedMs = 0);
     void clearCurrent();
     Phase nextPhaseAfter(Phase finished) const;
     void requestKeepAwake(bool on);

@@ -1,6 +1,7 @@
 #include "CommandRouter.h"
 #include "Application.h"
 #include "Paths.h"
+#include "WorkSessionManager.h"
 
 #include "core/Duration.h"
 
@@ -113,12 +114,33 @@ CommandResult CommandRouter::focusCommand(const QString& verb, const QVariantMap
 
 CommandResult CommandRouter::workCommand(const QString& verb, const QVariantMap& options)
 {
-    Q_UNUSED(options)
     if (!m_app->appState()->isModuleEnabled(Module::WorkLog))
         return CommandResult::failure(5, QStringLiteral("Work Log module is disabled"));
-    // Work recording is delivered with WP-05; until then report honestly.
-    Q_UNUSED(verb)
-    return CommandResult::failure(4, QStringLiteral("Work Log recording is not available yet (delivered in a later milestone)"));
+    if (!m_app->storageReady() || !m_app->work())
+        return CommandResult::failure(4, QStringLiteral("Work Log storage is unavailable (see Diagnostics)"));
+    WorkSessionManager* w = m_app->work();
+    QString err;
+    if (verb == QStringLiteral("start")) {
+        if (!w->start(options.value(QStringLiteral("project")).toString(), &err))
+            return CommandResult::failure(4, err);
+        return CommandResult::success(QStringLiteral("Work Log recording started"));
+    }
+    if (verb == QStringLiteral("pause")) {
+        if (!w->pause(QStringLiteral("manual"), &err))
+            return CommandResult::failure(4, err);
+        return CommandResult::success(QStringLiteral("Work Log recording paused"));
+    }
+    if (verb == QStringLiteral("resume")) {
+        if (!w->resume(&err))
+            return CommandResult::failure(4, err);
+        return CommandResult::success(QStringLiteral("Work Log recording resumed"));
+    }
+    if (verb == QStringLiteral("stop")) {
+        if (!w->stop(&err))
+            return CommandResult::failure(4, err);
+        return CommandResult::success(QStringLiteral("Work Log recording stopped and saved"));
+    }
+    return CommandResult::failure(2, QStringLiteral("unknown work verb '%1' (start|pause|resume|stop)").arg(verb));
 }
 
 CommandResult CommandRouter::pauseAll()

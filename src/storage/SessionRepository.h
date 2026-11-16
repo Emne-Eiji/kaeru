@@ -82,6 +82,9 @@ public:
                          const QString& kind, QString* error = nullptr);
     bool deleteCheckpointsForSession(qint64 sessionId, QString* error = nullptr);
 
+    // Access for cross-repository queries (recovery checkpoints).
+    QSqlDatabase& handle() { return m_db; }
+
 private:
     QSqlDatabase m_db;
     static QString iso(const QDateTime& utc);

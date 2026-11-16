@@ -68,6 +68,7 @@ add_library(kaeru_app STATIC
   src/app/Paths.cpp
   src/app/RecoveryManager.cpp
   src/app/Settings.cpp
+  src/app/WorkSessionManager.cpp
 )
 target_link_libraries(kaeru_app PUBLIC Qt6::Core Qt6::DBus kaeru_core kaeru_platform kaeru_storage)
 
@@ -102,7 +103,7 @@ target_link_libraries(kaeru PRIVATE kaeru_ui Qt6::Widgets)
 
 # ---- unit tests ----
 enable_testing()
-foreach(t IN ITEMS clocks registry coordinator timerengine focus worklog storage csv cliparser notify)
+foreach(t IN ITEMS clocks registry coordinator timerengine focus worklog storage csv cliparser notify workmanager)
   add_executable(test_${t} tests/unit/test_${t}.cpp)
   target_link_libraries(test_${t} PRIVATE kaeru_app kaeru_ui Qt6::Test)
   add_test(NAME test_${t} COMMAND test_${t})

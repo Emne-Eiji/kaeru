@@ -121,6 +121,12 @@ QString ControlService::WorkPause()
     return resultToString(router.workCommand(QStringLiteral("pause"), {}));
 }
 
+QString ControlService::WorkResume()
+{
+    CommandRouter router(m_app);
+    return resultToString(router.workCommand(QStringLiteral("resume"), {}));
+}
+
 QString ControlService::WorkStop()
 {
     CommandRouter router(m_app);

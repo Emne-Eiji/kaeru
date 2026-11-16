@@ -7,9 +7,14 @@
 #include "core/InhibitionCoordinator.h"
 #include "core/TimerEngine.h"
 #include "core/Types.h"
+#include "storage/Database.h"
+#include "storage/ProjectRepository.h"
+#include "storage/SessionRepository.h"
 
 #include <QObject>
+#include <QStringList>
 #include <QTimer>
+#include <memory>
 
 namespace kaeru {
 
@@ -20,6 +25,7 @@ class AutostartBackend;
 class ThemeWatcher;
 class PortalInhibitBackend;
 class LogindInhibitBackend;
+class WorkSessionManager;
 
 class Application final : public QObject {
     Q_OBJECT
@@ -39,6 +45,12 @@ public:
     Notifications* notifications() const { return m_notifications.get(); }
     AutostartBackend* autostart() const { return m_autostart.get(); }
     ThemeWatcher* themeWatcher() const { return m_themeWatcher.get(); }
+    // Access for UI / CLI / control service
+    WorkSessionManager* work() const { return m_work.get(); }
+    ProjectRepository* projects() const { return m_projects.get(); }
+    SessionRepository* sessions() const { return m_sessions.get(); }
+    bool storageReady() const { return m_storageReady; }
+    const QStringList& recoveryNotes() const { return m_recoveryNotes; }
     bool backgroundMode() const { return m_background; }
 
     // Keep Awake command surface (shared by UI/CLI/tray via CommandRouter)
@@ -81,6 +93,7 @@ private slots:
 
 private:
     void setupBackends();
+    void setupStorage();
     void startTickTimer();
 
     bool m_background = false;
@@ -98,6 +111,13 @@ private:
     std::unique_ptr<Notifications> m_notifications;
     std::unique_ptr<AutostartBackend> m_autostart;
     std::unique_ptr<ThemeWatcher> m_themeWatcher;
+
+    std::unique_ptr<Database> m_db;
+    std::unique_ptr<ProjectRepository> m_projects;
+    std::unique_ptr<SessionRepository> m_sessions;
+    std::unique_ptr<WorkSessionManager> m_work;
+    bool m_storageReady = false;
+    QStringList m_recoveryNotes;
 
     QTimer m_tickTimer;
 };

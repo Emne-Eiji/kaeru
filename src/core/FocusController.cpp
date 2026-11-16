@@ -10,8 +10,19 @@ FocusController::FocusController(TimerEngine* timers, QObject* parent)
     if (m_timers) {
         connect(m_timers, &TimerEngine::completed, this, [this](const QString& id, const QString& label) {
             Q_UNUSED(label)
-            if (id == m_countdownId)
-                finishInterval();
+            if (id == m_countdownId) {
+                // Capture planned/achieved before finishInterval() clears the
+                // timer id (work-log recording + honest reporting).
+                qint64 plannedMs = 0, achievedMs = 0;
+                for (const TimerEngine::TimerInfo& t : m_timers->timers()) {
+                    if (t.id == id) {
+                        plannedMs = t.durationMs;
+                        achievedMs = t.elapsedMs;
+                        break;
+                    }
+                }
+                finishInterval(plannedMs, achievedMs);
+            }
         });
     }
 }
@@ -81,13 +92,13 @@ bool FocusController::startPomodoro()
     return true;
 }
 
-void FocusController::finishInterval()
+void FocusController::finishInterval(qint64 plannedMs, qint64 achievedMs)
 {
     if (m_phase == Phase::Idle || m_phase == Phase::Paused)
         return;
     const Phase finished = m_phase;
     m_countdownId.clear();
-    emit intervalCompleted(finished, 0, 0);
+    emit intervalCompleted(finished, plannedMs, achievedMs);
 
     if (m_mode == Mode::Custom) {
         m_phase = Phase::Idle;
@@ -182,7 +193,15 @@ bool FocusController::skipInterval()
     }
     // Pomodoro: advance as if the interval completed (achieved time is what
     // actually elapsed; counted time excludes suspend per recorder policy).
-    finishInterval();
+    qint64 plannedMs = 0, achievedMs = 0;
+    for (const TimerEngine::TimerInfo& t : m_timers->timers()) {
+        if (t.id == m_countdownId) {
+            plannedMs = t.durationMs;
+            achievedMs = t.elapsedMs;
+            break;
+        }
+    }
+    finishInterval(plannedMs, achievedMs);
     return true;
 }
 
