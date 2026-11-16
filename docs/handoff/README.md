@@ -1,55 +1,54 @@
 # Kaeru Handoff Package — README (entry point)
 
 This directory is the primary handoff for the next coding agent taking over
-Kaeru. It exists because the previous agent's "WP-00…WP-07 complete"
-declaration does **not** mean the product passed user acceptance: the owner
-has tested the application and reported four-plus issues that remain
-**unresolved** (two `.deb` confusion, Keep Awake 2h/Indefinite, Focus Timer
-UX rejected, Work Log recording prematurely, broken focused tray icon).
+Kaeru. The **0.2.0 release candidate** focuses on dependable Keep Awake and
+simplifies the GUI. The owner's earlier reports were handled as follows:
+
+- Keep Awake 2h/Indefinite: **fixed** (single replaceable request; GUI and
+  portal verified).
+- Focused frog icon: **fixed** for runtime rendering (supplied PNG assets).
+- Two `.deb` files: **delivery clarified** (one main package; optional
+  dbgsym isolated).
+- Focus Timer and Work Log: **deferred** (hidden from GUI/CLI; source, tests
+  and data preserved). The Work Log database is not opened or written.
+
+**Still pending:** user acceptance, root package lifecycle testing, Ubuntu
+24.04/Wayland, real suspend/resume, audible sound. See
+`docs/DELIVERY_REPORT_0.2.0.md`.
 
 ## Reading order
 
 1. **`NEXT_AGENT_ONBOARDING.md`** — start here: paths, environment, build/
-   test/run commands, source map, approval boundary, honest status warning.
-2. **`KAERU_PROJECT_HISTORY.md`** — what KaerU is (product philosophy,
-    users, Keep Awake vs Work Log) and the full WP-00…WP-07 development
-    history with per-work-order objectives, results, evidence and status.
-3. **`KAERU_TECHNICAL_ARCHITECTURE.md`** — technical walkthrough: layering,
-    entry point, wiring root, each subsystem (keep awake, clocks, focus,
-    work log, storage, platform, UI, frog identity, build/packaging) with
-    files, classes, behavior, limitations and tests.
-4. **`KAERU_CURRENT_STATE.md`** — exact current facts: Git state
-    (branch `main`, HEAD `299f008`, clean tree), environment versions,
-    build/test results (13/13), Debian artifacts with paths and checksums,
-    and documented-vs-code contradictions.
-5. **`KAERU_OPEN_ISSUES.md`** — the owner-reported acceptance issues
-    (A: two packages; B: 2h/indefinite Keep Awake; C: Focus Timer
-    rejected; D: Work Log records prematurely; E: focused icon black
-    face), the investigation results (E reproduced and root-caused; B
-    CLI-works + GUI defects identified; C/D need owner direction), plus
-    the full status register and do-not-touch list.
+   test/run commands, source map, approval boundary, honest status.
+2. **`../../docs/DELIVERY_REPORT_0.2.0.md`** — what was fixed/verified/
+   deferred and the root-assisted test request.
+3. **`KAERU_PROJECT_HISTORY.md`** — product philosophy and the WP-00…WP-07
+   development history, plus the 0.2.0 addendum.
+4. **`KAERU_TECHNICAL_ARCHITECTURE.md`** — layering and subsystem walkthrough
+   (keep awake, clocks, focus, work log, storage, platform, UI, icons,
+   packaging). Focus/Work Log sections describe preserved but deferred code.
+5. **`KAERU_CURRENT_STATE.md`** — exact Git/build/test/package state, release
+   artifacts and checksums.
+6. **`KAERU_OPEN_ISSUES.md`** — per-issue disposition, remaining gaps and
+   do-not-touch list.
 
 ## One-paragraph summary
 
-Kaeru 0.1.1 is a Qt 6 (Widgets) Linux keep-awake/focus/work-log utility
-with a clean from-scratch Release build (zero warnings), 13/13 sandboxed
-test suites, native portal/logind inhibition evidence, a lintian-clean
-Debian package (`kaeru_0.1.1-1_amd64.deb`), and the official frog icon
-identity (awake/focused/sleep) integrated into tray, launcher and window.
-It is **not accepted**: the owner's real-world testing found the focused
-tray icon broken (Qt SVG clip-path rendering — reproduced), Keep Awake 2h/
-indefinite failing in the GUI despite working via the shared core (two
-GUI defects identified; exact repro pending), a Focus Timer whose design
-the owner calls "horrible", and a Work Log that "records work
-prematurely". Those four items are documented in `KAERU_OPEN_ISSUES.md`
-with evidence and proposed next steps; none were fixed by this handoff.
+Kaeru 0.2.0 is a Qt 6 (Widgets) Linux Keep Awake utility with a clean
+Release build (zero warnings), 15/15 sandboxed test suites, verified portal
+activation/release and every duration/replacement flow, a simplified
+three-page GUI (Keep Awake, Settings, Diagnostics), corrected frog icon
+rendering from the supplied PNGs, and a lintian-clean Debian package
+(`kaeru_0.2.0-1_amd64.deb`). Focus Timer, Work Log and Reports are deferred
+without deleting source, tests or user data. The product is **not yet
+accepted** and the package has **not** been through a root install/upgrade/
+remove/reinstall cycle.
 
 ## Ground rules (restated)
 
 - Do not modify the original artwork (`../frog_icons/`) or the approved
   Master Specification.
 - Do not rewrite Git history; do not push to any remote.
-- Do not trust prior completion claims; re-verify behavior; never weaken
-  tests for green results.
-- Product-owner approval is required for design/semantics changes (see
-  `KAERU_OPEN_ISSUES.md` and `NEXT_AGENT_ONBOARDING.md` §8).
+- Do not trust completion claims; re-verify behavior; never weaken tests.
+- Do not re-enable Focus or Work Log without an explicit product decision.
+- Keep all testing in `KAERU_TEST_HOME` sandboxes.

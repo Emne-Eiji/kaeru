@@ -15,7 +15,7 @@
    (1500×540 canvas), not a runtime sprite sheet — it is kept for documentation
    only. `generate_icons.py` is the original generator, kept for provenance;
    it is never run at build time.
-2. **Launcher/brand icon.** `io.github.kaeru.KaerU.svg` (hicolor scalable) =
+2. **Launcher/brand icon.** `io.github.kaeru.Kaeru.svg` (hicolor scalable) =
    the **awake** expression — recognizable and state-neutral for a launcher.
    PNG fallbacks at hicolor sizes 16–256 for desktops without SVG support.
 3. **Tray expressions and precedence.** The tray uses the same three
@@ -46,6 +46,17 @@
    FILES resources/icons/frog/*.svg)` produces the aliases `:/icons/frog/*.svg`
    that `Icons.cpp` loads. (The WP-02 setup had a broken alias — icons never
    loaded from resources; this ADR records the corrected mechanism.)
+
+## 0.2.0 amendment — PNG runtime assets
+
+Qt 6.2's SVG renderer mis-paints `focused.svg` (clip-path on the eye lids
+produces a black face), so the runtime `QIcon` path no longer renders SVG.
+The embedded resource set now contains the supplied PNG variants
+(`:/icons/frog/png/{awake,focused,sleep}-{16…256}.png`) and `Icons.cpp`
+selects those sizes; the installed hicolor SVGs remain for desktop menus and
+launchers. This is an asset-selection change, not a redraw: the original
+artwork and palette are unchanged, and `test_icons` guards the focused
+palette. The decision’s identity, precedence and tooltip rules are unchanged.
 
 ## Consequences
 

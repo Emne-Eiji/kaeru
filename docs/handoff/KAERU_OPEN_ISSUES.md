@@ -1,258 +1,169 @@
-# Kaeru — Open Issues and Unresolved Validation
+# Kaeru — Open Issues and Unresolved Validation (0.2.0)
 
-> Handoff package document. The items here are **user-reported acceptance
-> issues and honest gaps**. They are not resolved merely because automated
-> tests pass. Nothing in this file has been fixed by the handoff author
-> (documentation-only assignment).
+> Updated 2026-11-16 for the 0.2.0 release. This file supersedes the 0.1.1
+> handoff status. Each item states what was changed, what was verified, and
+> what remains open. Passing automated tests are **not** user acceptance.
 
-## USER-REPORTED ACCEPTANCE ISSUES — UNRESOLVED
+## Resolution summary
 
-### Issue A — Two Debian packages (debug symbols confuse delivery)
+| Issue | Owner report | 0.2.0 disposition | Where |
+|---|---|---|---|
+| A | Two `.deb` files confuse delivery | Addressed in the release layout: one main `.deb`; dbgsym isolated and labeled optional | `dist/0.2.0/README.md` |
+| B | 2 hours / Indefinite “fail” while shorter durations work | **Fixed and GUI-verified**: one replaceable Keep Awake session; no stacked requests | `docs/DELIVERY_REPORT_0.2.0.md` §3–4 |
+| C | Focus Timer design rejected | **Deferred**: removed from GUI/CLI; source, tests and data retained; no redesign attempted | §C below |
+| D | Work Log records work prematurely | **Deferred and made read-only**: removed from GUI/CLI; the preserved database is not opened or written | §D below |
+| E | Focused icon is broken | **Fixed for runtime rendering**: embedded PNG variants replace SVG rendering | §E below |
 
-**User report:** two `.deb` files were found, one described as debugging
-symbols for Kaeru.
+## Issue A — Two Debian packages (debug symbols)
 
-**What the build actually produces (verified):**
+**Disposition:** addressed as a delivery/instruction problem, not a
+packaging bug.
 
-| File | Size | What it is |
-|---|---|---|
-| `kaeru_0.1.1-1_amd64.deb` | 361,064 B | the runtime package (binary, desktop, icons, manpage) |
-| `kaeru-dbgsym_0.1.1-1_amd64.ddeb` | 5,746,782 B | auto-generated debug symbols |
+- 0.2.0 produces `kaeru_0.2.0-1_amd64.deb` (328,640 B) and the automatically
+  generated `kaeru-dbgsym_0.2.0-1_amd64.ddeb` (5,551,640 B).
+- The release directory `dist/0.2.0/` contains the main package at its root
+  and the dbgsym under `debug-symbols/`; `README.md` states that normal users
+  install only the main `.deb`.
+- The main package remains the complete user package: binary, desktop entry,
+  AppStream metadata, manpage, PNG/SVG icons, README, license, changelog.
+- `libqt6svg6` was removed from `Depends` because runtime icon rendering no
+  longer uses SVG; the SVGs are installed for desktop integration.
+- The dbgsym is standard debhelper 13 behavior and remains optional.
 
-- The dbgsym package is created automatically by debhelper 13
-  (`dh_strip --dbgsym-migration`-style behavior): control shows
-  `Package-Type: ddeb`, `Auto-Built-Package: debug-symbols`,
-  `Depends: kaeru (= 0.1.1-1)`, `Section: debug`, `Priority: optional`.
-  Its payload is `/usr/lib/debug/.build-id/ce/7eafc….debug` (matching the
-  Build-Ids field).
-- This is **standard Debian behavior** for debhelper ≥ 13; it is not a Kaeru
-  packaging bug.
-- **Normal users only need `kaeru_0.1.1-1_amd64.deb`**; the dbgsym is
-  optional and only useful for debugging crashes. It is safe to delete it.
-- The main package contains every runtime component: binary, desktop entry,
-  metainfo, manpage, hicolor icons, docs. Verified by content audit.
-- **Delivery-instruction gap:** the delivery report and the owner-facing
-  instructions never told the user which file to install. The correct
-  instruction is: `sudo apt install ./kaeru_0.1.1-1_amd64.deb`. This is a
-  documentation problem, not a package problem — but it confused the owner,
-  which is a real usability defect of the delivery.
+**Still open:** real package lifecycle testing requires root; see the request
+in `docs/DELIVERY_REPORT_0.2.0.md` §9.
 
-**Status:** explained; not changed (no packaging changes allowed in this
-assignment). Proposed next step (needs owner approval): either ignore the
-dbgsym in the handoff instructions, or configure `dh_strip --no-automatic-dbgsym`
-explicitly if the owner wants a single-file release.
+## Issue B — Keep Awake 2h / Indefinite **FIXED**
 
-### Issue B — Keep Awake: 2 hours and Indefinite "fail" while 15m/30m/1h work
+**Root cause (confirmed):** every chip added another `InhibitionRequest` to
+the registry. The UI displayed the **earliest** expiry among stacked
+requests, so a later 2h or Indefinite request was masked by an older 15m
+request. The Indefinitely warning was also hidden by the 1-second refresh.
 
-**User report:** duration options 15 min / 30 min / 1 hour work; 2 hours and
-Indefinite do not work correctly.
+**Fix:**
 
-**What was verified during the handoff (direct execution):**
+- `ManualAwakeSession` owns exactly one manual request.
+- A new duration adds its request first, then removes the previous request,
+  so the newest duration wins without a release/re-acquire gap.
+- The timer line is always present and the action chips do not move between
+  states; one turn-off action appears only while a request is active.
+- Turn-off stops the session and suppresses automatic reactivation until the
+  user chooses a new duration.
+- Expiry emits the original request payload (reason + policy) and clears the
+  session.
+- The portal backend subscribes to the predicted request handle **before**
+  `Inhibit`, eliminating the activation race that could leave the UI stuck
+  “activating”.
 
-- CLI path (`kaeru awake on --duration 2h --mode both`, same Application
-  methods the GUI chips call): **works** —
-  `"keepAwake":{…"remainingMs":7197983,…"status":"active"}` (remaining ≈ 2 h).
-- Indefinite (`kaeru awake on` with no duration → `awakeIndefinite`):
-  **works** — `"remainingMs":-1,…"status":"active"`.
-- Therefore the core request/expiry logic is not the cause; the failure is
-  in the **GUI interaction layer** (OverviewPage chips / tray menu) or in
-  how the user's sequence of clicks interacts with stacked requests.
+**Verified with real GUI clicks and the live portal:**
 
-**Concrete GUI-side facts found in code (candidate causes):**
+- 15m → active, remaining ≈ 896,000 ms.
+- 2h after 15m → active, remaining ≈ 7,196,863 ms (1 h 59 m 57 s).
+- Indefinitely → active, `remainingMs=-1`, reason “Keep awake (indefinite)”.
+- 30m from the turned-off state, then 1h → both active with the correct
+  remaining time.
+- Turn off → inactive with the documented limitation text.
+- 5-second timer → auto-cleared, no inhibitor left.
+- Quit while active → process exits, no inhibitor left.
+- `kill -9` → no leaked inhibitor; restart reports inactive.
+- Autostart flags → hidden startup, indefinite active, window opens on
+  demand.
 
-1. `OverviewPage::refresh()` line ~180 does `m_awakeWarning->setVisible(false)`
-   **on every refresh** (a 1 s tick refreshes the page). In
-   `onDurationChosen(0)` (the Indefinitely chip) the warning label is shown,
-   then `refresh()` runs at the end of the handler and **immediately hides
-   it** — the "will stay on until you turn it off" warning is never visible.
-2. Clicking chips in sequence **stacks requests** (each chip adds a new
-  `InhibitionRequest`; the registry keeps them all). The UI's remaining
-   display uses `earliestRemainingMs` — the **earliest** expiry among all
-   stacked requests, not the newest. After clicking 15m then 30m then 1h
-   then 2h, the display shows the *earliest* (e.g. ~14 m from the 15m
-   request), so the 2h chip "appears not to work". Same for Indefinite
-   (remaining shows the older timed request's countdown, not ∞).
-3. The tray menu duplicates the same chip semantics (`resumeAutomaticRules();
-   app->awakeOn(...)` per entry).
+**Unit coverage:** `test_manualawake` (8 cases) and the updated
+`test_coordinator` expiry-payload assertion.
 
-**What could NOT be established:** the exact reproduction of the owner's
-session (GUI automation of the overview page was not possible; no
-screenshot/video of the failing interaction exists). The two code facts
-above fully explain the observed symptoms under sequential clicking, but
-confirmation requires the owner's reproduction.
+**Still open:** long-duration wall-clock behaviour beyond the short probe;
+real suspend/resume (not tested).
 
-**Proposed reproduction/diagnosis procedure for the next agent:**
+## Issue C — Focus Timer **DEFERRED**
 
-1. Launch the GUI (build tree or installed), open Overview.
-2. Click 15m, then 30m, then 1h, then 2h, then Indefinitely **without
-   waiting for expiry**; observe the remaining-time label after each click.
-   Expectation from code: label shows the earliest stacked expiry (bug).
-2b. Click 2h on a fresh instance (no prior requests): the request
-    activates (status Active, remaining ≈ 2 h) — if that also "fails" for
-    the owner, capture `kaeru status --json` and the journal
-    (`journalctl --user`) for portal errors.
-3. Check whether the Indefinite warning label ever becomes visible (it
-    should not — refresh hides it).
-4. Only after reproducing, decide the fix with the owner (options: replace
-    stacked requests instead of adding; show the newest expiry; fix the
-    warning persistence; clarify tray semantics).
+The owner’s rejection stands. No redesign was attempted in this release.
 
-**Status:** root cause not confirmed end-to-end; two concrete GUI defects
-identified; product decision required (stacking semantics).
+- `Module::Focus` is forced off; the Focus page is not constructed in the
+  main window and the CLI reports the feature as unavailable.
+- `FocusController`, `FocusPage`, timer engine support, notifications and
+  their tests remain in the source tree and still compile/pass.
+- Existing focus-session rows in the preserved database are not read or
+  written by the user interface in this release.
+- Re-enabling Focus requires a product decision about the interaction model
+  (“horrible” was not decomposed into specific requirements) and a fresh
+  design pass.
 
-### Issue C — Focus Timer design/implementation rejected by the owner
+## Issue D — Work Log **DEFERRED AND READ-ONLY**
 
-**User report (verbatim assessment):** "Focus work session design and
-implementation and function is horrible!"
+The owner’s “records work prematurely” report was not re-litigated. The
+feature is removed from the user surface for this release.
 
-**What the current implementation actually is (code-verified):**
+- `Module::WorkLog` is forced off; the page and CLI commands are
+  unavailable.
+- Storage setup is skipped entirely: the existing database is **not opened,
+  migrated, checkpointed or closed**.
+- Tick, suspend/lock boundaries, focus-to-work-log recording, interrupted
+  session recovery and quit-time stop are all gated off.
+- Sandbox proof: a pre-seeded SQLite database with a marker row had the same
+  SHA-256 before and after a background start, diagnostics read and quit;
+  the marker row was unchanged.
+- Diagnostics reports `Work Log storage: deferred` with the reason.
 
-- `FocusPage` (`src/ui/pages/FocusPage.{h,cpp}`): a two-column form —
-  left: status badge, big timer label, phase info, six buttons
-  (Start/Pause/Resume/Skip/Extend/Stop); right: routine picker
-  (Pomodoro/Custom countdown), custom minutes, Pomodoro defaults (work/
-  short/long/every), option checkboxes (keep awake during work/breaks,
-  record in work log, auto-next).
-- `FocusController` (`src/core/FocusController.{h,cpp}`): Idle → Work →
-  ShortBreak/LongBreak …; **autoNext is off by default**, so after each
-  interval the phase returns to **Idle** and the next interval only starts
-  when the user presses Start again (the page's Start uses
-  `startPomodoro()`, which **resets** `m_completedWork` and the interval
-  counter). Interval transitions therefore require manual restarts, and
-  the completed-work counter resets every time the routine is restarted —
-  a user who follows the intended flow (start → work → start → break …)
-  ends up with the counter at 1 forever.
-- Pause cancels the countdown and recreates it on resume with the frozen
-  remainder (correct but surprising); skip in Pomodoro jumps to the next
-  phase as if completed (achieved time = elapsed).
-- Notifications on interval completion (policy-gated, quiet hours).
-- The UI is settings-dense rather than glanceable; there is no dedicated
-  "focus mode" presentation, no break overlay, no progress ring — the
-  spec's uiux describes a simple page, and that is what was built.
-- Unit tests pass (state machine transitions, pause/resume, quiet hours);
-  **no native/UX validation was ever performed by the owner until now.**
+**Still open:** the product decision about recording semantics (idle
+detection, quit behavior, expected start/stop) before the feature can return.
 
-**Why passing tests did not establish acceptable design:** the tests verify
-the state machine's internal consistency, not whether the interaction
-matches what a person expects from a focus timer. The owner's verdict is
-the acceptance criterion; it overrides the implementation's self-certification.
+## Issue E — Focused frog icon **FIXED (runtime rendering)**
 
-**Status:** owner rejection stands; **do not redesign without the owner's
-direction** (what specifically is horrible: flow? visuals? the manual
-restarts? the dense page?). Proposed next step: a design conversation
-with the owner, then a focused rework — possibly a minimal single-timer
-flow (start once, intervals flow automatically, big glanceable timer)
-rather than the current settings-form design.
+**Root cause (reproduced earlier):** Qt 6.2’s SVG renderer mis-paints
+`focused.svg` (clip-path construct), producing a black face. The supplied
+PNG variants rasterize correctly.
 
-### Issue D — Work Log "records work prematurely"
+**Fix (asset selection, not redrawing):**
 
-**User report:** "Work log written and work prematurely."
+- The embedded Qt resource set now uses supplied PNGs at 16, 24, 32, 48, 64,
+  128 and 256 px for all three expressions.
+- `Icons.cpp` builds every runtime `QIcon` from those PNGs.
+- The installed hicolor SVGs remain for desktop integration only.
+- The original `../frog_icons/` artwork was not modified.
+- `test_icons` verifies all embedded sizes exist, the three expressions are
+  distinct, and the focused render retains green body and light eye pixels.
 
-**What the code actually does (verified by source audit):**
+**Still open:** visual inspection in the user’s real top panel on their
+desktop configuration (SNI properties and embedded pixmaps were verified;
+the panel’s own desaturation/theme behavior is desktop-side).
 
-- A work session + first work segment are created **only** by explicit
-  `work start` (GUI WorkLogPage Start, tray Work Log ▸ Start, or
-  `kaeru work start`). No auto-start exists anywhere (no caller of
-  `startSession`/`start()` besides the UI/router paths; `prepareQuit`
-  only *stops* an open session).
-- `recordFocusWork` (focus interval completion with `recordInWorkLog`
-  enabled, off by default) writes to **`focus_sessions`**, never to
-  work-log segments — no double counting.
-- Segments accrue continuously from start until **pause/stop/lock/suspend**
-  — there is **no idle detection** (declared out of 1.0 scope). If the
-  user starts recording and then does something else without locking or
-  stopping, the time is recorded as work. The app cannot know the user is
-  not working; that is the honest limitation, but it may be exactly what
-  the owner experienced.
-- On graceful quit (`prepareQuit`) an open session is stopped and **saved**
-  — quitting writes the session even if the user never explicitly stopped.
-- Recovery at startup closes interrupted sessions at the last checkpoint
-  (or segment start) — never invents work.
-- Totals only count **closed** segments of kind `work`; paused/idle time
-  goes to `breakMs`, open segments never count.
-
-**Assessment:** from code alone, nothing "premature" writes work data
-without a user action — the plausible mechanisms for the owner's
-experience are (a) an explicitly started session left running (no idle
-detection), (b) the graceful-quit save of an open session, or (c) an
-expectation mismatch about when recording should start/stop. This cannot
-be decided from code; it **requires product-owner clarification** of the
-intended recording semantics (e.g. should recording auto-pause on
-inactivity? should quit discard instead of save? should focus recording be
-the default?).
-
-**Status:** requires product-owner decision; no code change made.
-
-### Issue E — "icon in focus mode is broken!" — REPRODUCED
-
-**User report:** the icon shown in focus mode is broken.
-
-**Handoff investigation (direct rendering probe, Qt 6.2.4):**
-
-- The tray/window icons load from Qt resources `:/icons/frog/*.svg`
-  (`src/ui/Icons.cpp`), i.e. the SVG files — not the PNGs.
-- Rendering `focused.svg` through Qt's QSvgRenderer produces a **black
-  face**: at 50×50, face pixels are `(0,0,0,255)` while `awake.svg` and
-  `sleep.svg` render the correct green `(76,175,80,255)` at the same
-  coordinates. At 100×100 the focused render has ~7958 dark pixels vs
-  ~2100 for the others (face area painted dark), confirming the face is
-  mis-rendered.
-- The cause is the `focused.svg` construction: two `<clipPath>`
-  elements (`#lidL`, `#lidR`) with `clip-path="url(#…)"` on the white
-  eye circles. Qt's SVG (Tiny) renderer mishandles this construct (likely
-  clip-path coordinate handling inside the transformed group), painting
-  the face black. The **supplied PNGs rasterize correctly**
-  (`focused-64.png` center = (76,175,80) — produced by `rsvg-convert`,
-  which handles the clipPath correctly).
-- Consequence: in the real application the focused (focus-running) tray
-  icon is a black blob — exactly the owner's report.
-
-**Status:** reproduced and root-caused. **Not fixed** (fixing is next-agent
-work with owner approval). Fix direction options (owner decision):
-(a) use the supplied PNG variants for the tray icon at runtime (they are
-correct), (b) restructure `focused.svg` without clipPath (e.g. pre-cut
-paths), (c) ship a fixed SVG from the original generator — note the
-original files in `frog_icons/` must remain untouched, so any change must
-be an application-side asset decision documented in ADR-008.
-
-## Other known defects / unresolved validation (verified)
+## Remaining gaps / not verified
 
 | # | Item | Status |
 |---|---|---|
-| 1 | dpkg-database lifecycle tests (install/upgrade/remove/reinstall) | **not tested** — root required; extraction-run verified instead |
-| 2 | Ubuntu 24.04 native validation | **not tested** — declared gap (Pop!_OS 22.04 only) |
-| 3 | Real suspend/resume cycle | **not tested** — manual procedure only (user session protection); boot-clock behavior unit-tested with injected clocks |
-| 4 | Audible notification sound | **not tested** — `sound-name` hint sent; playback is daemon-side |
-| 5 | Full GUI usability / screenshots | **partial** — tray/panel verified with screenshots; full-window flows (focus, work log, reports) not screenshot-verified |
-| 6 | Focus Timer usability | **rejected by owner** (Issue C) |
-| 7 | Work Log correctness | **disputed by owner** (Issue D) |
-| 8 | 2h/indefinite Keep Awake | **works via CLI; GUI stacked-request display bug identified** (Issue B) |
-| 9 | Focused tray icon | **broken (black face)** — reproduced (Issue E) |
-| 10 | OverviewPage stale Work Log text | minor UI inconsistency (says "arrives with the Work Log milestone") |
-| 11 | `session_revisions` table | written by nothing yet (provenance deferred) |
-| 12 | `RecoveryManager` class | stub; real logic in WorkSessionManager |
+| 1 | Real `dpkg`/`apt` install, upgrade, remove, reinstall | **not tested** — root password unavailable; root-assisted procedure requested in the delivery report |
+| 2 | Ubuntu 24.04 native validation | **not tested** — no machine; Pop!_OS 22.04 / Ubuntu 22.04 base only |
+| 3 | Wayland session | **not tested** — X11 only |
+| 4 | Real suspend/resume cycle | **not tested** — requires a real suspend; unit clock simulation only |
+| 5 | Audible notification sound / visual expiry notification | **not observed** — wiring and policy tested; playback is daemon-side |
+| 6 | Live portal denial / fallback scenario in 0.2.0 | **not tested live** — backend failure paths are unit-tested with fakes |
+| 7 | Long-duration expiry (hours) | **not tested** — short expiry probe only |
+| 8 | Tray visual in the real panel | **partial** — SNI item, tooltip and 5 pixmaps verified; panel theme/desaturation is desktop-side |
+| 9 | User acceptance of the simplified GUI | **pending** — this report is not acceptance |
 
-## Status register (legend)
+## Status register
 
-- **Verified by direct execution** — reproduced live during this project
-  (native inhibition, tray states, notifications, work-log DB contents,
-  package extraction-run, icon probes).
-- **Verified by automated tests** — 13/13 Qt Test suites (sandboxed).
-- **Verified by source-code inspection** — code facts in this file
-  (stacked requests, warning hide, clipPath rendering, caller audit).
-- **Documented but not independently verified** — Ubuntu 24.04, real
-  suspend, audible sound, full GUI flows.
-- **User-reported failure** — Issues A–E (A: explained/standard; B–E
-  open).
-- **Blocked** — dpkg lifecycle tests (root), any apt operation (password).
-- **Requires product-owner decision** — B (stacking semantics), C (focus
-  redesign direction), D (recording semantics), E (fix direction).
+- **Verified by direct execution (0.2.0):** Release build zero warnings;
+  15/15 suites; every Keep Awake duration and replacement; turn-off;
+  5-second expiry; quit cleanup; kill/restart; autostart flags; SNI tooltip
+  and pixmaps; package build/lintian/AppStream/md5sums; preserved database
+  byte-identical.
+- **Verified by source inspection:** deferred-module gating; PNG-only runtime
+  icon path; portal handle subscription ordering.
+- **Not independently verified:** Ubuntu 24.04, Wayland, real suspend/resume,
+  audible sound, real panel visuals, dpkg lifecycle.
+- **Requires product-owner decision:** Focus redesign (C), Work Log recording
+  semantics (D), acceptance of the 0.2.0 GUI.
+- **Blocked:** root package lifecycle testing (password).
 
-## Do-not-touch list for the next agent
+## Do-not-touch list
 
 - `../frog_icons/` — original artwork; must remain byte-identical.
-- `KaerU_Documentation_Package_v0.1.1/MASTER_SPECIFICATION.md` — do not
+- `Kaeru_Documentation_Package_v0.1.1/MASTER_SPECIFICATION.md` — do not
   rewrite the approved spec.
 - Git history — do not rewrite/reset; do not push anywhere.
 - User data (real `$XDG_*` dirs) — all testing must stay in
   `KAERU_TEST_HOME` sandboxes.
+- Do not re-enable Focus or Work Log in the user surface without an explicit
+  product decision and acceptance plan.

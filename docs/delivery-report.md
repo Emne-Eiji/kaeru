@@ -1,5 +1,10 @@
 # Kaeru 0.1.1 — Final Delivery Report
 
+> **Historical document.** This report describes 0.1.1. It is superseded by
+> `docs/DELIVERY_REPORT_0.2.0.md`, which records the release scope changes,
+> issue dispositions and 0.2.0 evidence. The 0.1.1 commands below for Focus
+> and Work Log are **not available** in 0.2.0.
+
 **Date:** 2026-11-16 · **Work orders executed:** WP-00 … WP-07 (autonomous
 execution authorized 2026-11-15)
 **Repository:** `kaeru/` (this directory) · **License:** GPL-3.0-or-later
@@ -155,13 +160,14 @@ dce5ae7 WP-03 completion evidence and documentation (this commit)
 
 ## 9. How to use (quick start)
 
+> Superseded by 0.2.0. Use the commands in `README.md` or
+> `docs/DELIVERY_REPORT_0.2.0.md`; Focus, Work Log and Export are deferred.
+
 ```
 kaeru                          # GUI
 kaeru --background             # tray/background
 kaeru awake on --duration 30m  # keep awake 30 min (system+display)
+kaeru awake indefinite         # keep awake until turned off
 kaeru awake off                # turn off now
-kaeru focus start [--duration 25m] | pause | resume | skip | stop
-kaeru work start --project X | pause | resume | stop
-kaeru export --format csv --from 2026-11-01 --to 2026-11-30
-kaeru status | diagnostics | pause-all | quit
+kaeru status | diagnostics | open | quit
 ```

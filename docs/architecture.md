@@ -2,6 +2,12 @@
 
 **Status:** Approved design (WP-01), implementing per user authorization of 2026-11-15.
 
+> **0.2.0 scope:** the shipped release implements the Keep Awake subset of
+> this design (plus Settings/Diagnostics). Focus, Work Log and Reports are
+> deferred: their design, source and tests remain, but they are not exposed
+> in the 0.2.0 GUI/CLI and the Work Log database is not opened. The sections
+> below describe the full target architecture, not the 0.2.0 user surface.
+
 ## 1. Overview
 
 Kaeru is a single-process Qt 6 Widgets desktop application with a second control surface:

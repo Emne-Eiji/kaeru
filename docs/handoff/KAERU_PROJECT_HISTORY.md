@@ -85,9 +85,9 @@ authorization (2026-11-15). Git history: `git log --oneline` in `kaeru/`.
 - **Objective:** architecture, ADRs, UI/UX spec, capability matrix, privacy,
   testing strategy, traceability, execution plan, project spec, README,
   CHANGELOG, AGENTS.md, GPL-3.0 LICENSE.
-- **Key decisions:** app ID `io.github.kaeru.KaerU` (ADR-001); D-Bus service
-  `io.github.kaeru.KaerU` + interface `….Control1` at
-  `/io/github/kaeru/KaerU`; portal-first inhibition with logind fallback
+- **Key decisions:** app ID `io.github.kaeru.Kaeru` (ADR-001); D-Bus service
+  `io.github.kaeru.Kaeru` + interface `….Control1` at
+  `/io/github/kaeru/Kaeru`; portal-first inhibition with logind fallback
   (ADR-002, logind cannot honestly claim SessionIdle); clock model
   BOOTTIME/MONOTONIC/wall (ADR-003); SQLite + WAL + migrations (ADR-004);
   single binary GUI/background/CLI via D-Bus with exit codes 0/2/3/4/5
@@ -219,3 +219,30 @@ Functionally complete for the approved 1.0 scope **as designed**, but the
 owner's acceptance testing has rejected several behaviors (see
 `KAERU_OPEN_ISSUES.md`). The handoff package exists precisely because
 "all work orders complete" is not the same as "user accepted".
+
+## 5. 0.2.0 release addendum (2026-11-16)
+
+The first post-handoff release deliberately narrows the product to Keep
+Awake and addresses the reproducible acceptance blockers:
+
+- **Single replaceable Keep Awake session.** Stacked requests were the cause
+  of the 2h/Indefinite symptoms; the new `ManualAwakeSession` keeps exactly
+  one request and lets the newest duration win.
+- **Portal activation race fixed.** The backend subscribes to the predicted
+  request handle before `Inhibit`, so the confirmation cannot be lost.
+- **Frog icon rendering fixed.** Embedded UI icons use the supplied PNG
+  variants; the SVG files remain installed for desktop integration. The
+  original `frog_icons/` artwork is untouched.
+- **GUI simplified** to Keep Awake, Settings and Diagnostics, with File >
+  Settings/Quit and a trimmed tray.
+- **Autostart corrected** to `kaeru --background --awake-on-login`, which
+  starts hidden and enables indefinite Keep Awake.
+- **Focus Timer, Work Log and Reports deferred.** Their source, tests and
+  stored data are preserved. The Work Log database is not opened, migrated
+  or written in 0.2.0; the deferred module is strictly read-only.
+- **Packaging clarified:** one main `.deb`; optional debug symbols isolated
+  under `dist/0.2.0/debug-symbols/`.
+
+Release commits: `472323a`, `07b81f3`, `743ec78`, `cfebbbe`, `b67fc21` plus
+the final documentation commit. The 0.2.0 evidence and remaining gaps are in
+`docs/DELIVERY_REPORT_0.2.0.md`.

@@ -8,39 +8,48 @@ recolors or regenerates it.
 
 | What | Where | Notes |
 |---|---|---|
-| Original source package (untouched) | `../frog_icons/` (outside the repo) | `icons/awake|focused|sleep.svg`, `icons/*.png` (16–512), `frog-tray-icons.svg/png` (preview composition), `frog-tray-lab.html`, `generate_icons.py`, proof images |
+| Original source package (untouched) | `../frog_icons/` (outside the repo) | `icons/awake|focused|sleep.svg`, `icons/*.png` (16–512), `frog-tray-icons.svg/png`, `frog-tray-lab.html`, `generate_icons.py`, proof images |
 | Authoritative app assets | `kaeru/resources/icons/frog/` | the three SVGs + `frog-tray-icons.svg` (documentation) + `generate_icons.py` (provenance) |
 | Raster variants | `kaeru/resources/icons/frog/png/` | supplied PNGs 16, 24, 32, 48, 64, 128, 256, 512 per expression |
-| Embedded (app UI) | Qt resources `:/icons/frog/{awake,focused,sleep}.svg` | via `qt_add_resources(BASE resources PREFIX /)` — see Icons.cpp |
+| **Embedded (app UI)** | Qt resources `:/icons/frog/png/{awake,focused,sleep}-{16…256}.png` | **runtime icons are PNG-only**; see `Icons.cpp` |
 | Installed (launcher) | `share/icons/hicolor/scalable/apps/io.github.kaeru.Kaeru.svg` | awake expression |
 | Installed (states) | `share/icons/hicolor/scalable/apps/io.github.kaeru.Kaeru.{focused,sleep}.svg` | focused/sleep expressions |
-| Installed (raster fallback) | `share/icons/hicolor/{16..256}x{16..256}/apps/io.github.kaeru.KaerU-{awake,focused,sleep}.png` | supplied PNGs, per-size dirs |
+| Installed (raster) | `share/icons/hicolor/{16..256}x{16..256}/apps/io.github.kaeru.Kaeru-{awake,focused,sleep}.png` | supplied PNGs, per-size dirs |
 
 ## Expressions
 
 | File | Meaning |
 |---|---|
-| `awake.svg` | Keep-awake inhibition actively held |
-| `focused.svg` | A focus interval is actively running |
-| `sleep.svg` | Kaeru inactive (paused/off/failed) — never "the computer is sleeping" |
+| `awake.svg` / `awake-*.png` | Keep-awake inhibition actively held |
+| `focused.svg` / `focused-*.png` | A focus interval is actively running (preserved for the deferred Focus module) |
+| `sleep.svg` / `sleep-*.png` | Kaeru inactive (paused/off/failed) — never "the computer is sleeping" |
 
 Tray mapping + precedence: `docs/decisions/ADR-008-frog-icon-identity.md`.
 Palette: face `#4CAF50`, stroke/features `#1B5E20`, eye white `#FFFFFF`
 (all expressions share geometry, stroke weight and framing).
 
-## Verification performed (2026-11-16)
+## Why runtime uses PNGs (0.2.0)
 
-- `svg_probe` (Qt6 qsvg, offscreen): QIcon loads `awake.svg` at 16/24/32/64/128
-  px, all pixmaps non-null (previously null before `libqt6svg6` was installed).
-- Live tray: SNI item `:1.359/StatusNotifierItem` (example) registered on the
-  session watcher; ToolTip verified in all five states
-  (inactive → keep awake active → both (awake+focus text) → focus running →
-  inactive); panel diff with/without Kaeru isolates the icon region
-  (x 1670–1741); the D-Bus `IconPixmap` payload contains the exact official
-  colors ARGB `(255,76,175,80)` = #4CAF50 and `(255,27,94,32)` = #1B5E20.
-- The dev panel desaturates tray icons (user's `desaturated-tray-icons`
-  extension) — the frog renders greyscale there by desktop configuration, not
-  by Kaeru; shape remains legible (readability proof: `../frog_icons/proof-16px.png`).
+Qt 6.2's SVG renderer mis-paints `focused.svg`: the clip-path construct on
+the eye lids causes the face to render black. The supplied PNG variants
+rasterize correctly. Kaeru therefore embeds the PNGs for every runtime
+`QIcon` (window, tray, About) while still installing the SVGs for desktop
+menus/launchers that prefer scalable icons. This is an asset-selection fix;
+no artwork was edited.
+
+## Verification performed
+
+- **0.1.1 probe:** SVG rendering confirmed the black-face defect in Qt 6.2;
+  the supplied PNGs rendered the correct palette.
+- **0.2.0:** `test_icons` verifies all 21 embedded PNG variants exist at the
+  expected size (3 expressions × 7 sizes), `QIcon` exposes raster sizes
+  16/64/256, the three expressions are visually distinct, and the focused
+  render contains green body pixels and light eye/highlight pixels.
+- **Live tray (0.2.0):** SNI item registered; ToolTip reports the Keep Awake
+  state and remaining time; `IconPixmap` exposes 5 embedded pixmaps built
+  from the PNG icon. The user's panel theme/desaturation is desktop-side.
+- **Packaging:** the `.deb` contains 21 PNGs under hicolor size directories
+  and the 3 SVGs under `scalable/apps`; md5sums verified.
 
 ## Licensing
 

@@ -1,17 +1,26 @@
-# Kaeru — Next-Agent Onboarding
+# Kaeru — Next-Agent Onboarding (0.2.0)
 
-> Start here. Read this file, then `README.md` (handoff index), then the
-> documents it points to in order.
+> Start here. Read this file, then `docs/handoff/README.md`, then the
+> documents it points to. The 0.2.0 release candidate is built and verified;
+> **user acceptance and root package lifecycle testing are still pending.**
 
-## 0. First, the honest status warning
+## 0. Honest status
 
-**The previous agent's declaration that WP-00 through WP-07 are "complete"
-does not mean Kaeru has passed user acceptance testing.** The owner has
-tested the application in the real world and rejected several behaviors
-(two `.deb` confusion, Keep Awake 2h/indefinite, Focus Timer UX,
-Work Log premature recording, broken focused tray icon). Those issues are
-documented in `KAERU_OPEN_ISSUES.md` and remain **unresolved**. Do not
-blindly trust prior completion claims, and never weaken tests to get green.
+The 0.1.1 owner reports were handled as follows in 0.2.0:
+
+- **Keep Awake 2h/Indefinite:** fixed with a single replaceable manual
+  session; verified with real GUI clicks and the live portal.
+- **Focused frog icon:** fixed for runtime rendering by embedding the
+  supplied PNG variants; verified by tests and live tray pixmaps.
+- **Two `.deb` files:** delivery layout now has one main package and an
+  isolated optional `debug-symbols/` folder.
+- **Focus Timer:** deferred (hidden from GUI/CLI); owner rejection stands.
+- **Work Log:** deferred and made strictly read-only; the preserved database
+  is not opened or written.
+
+The release is **not user-accepted**, and the package has **not** been
+installed/upgraded/removed with root. Do not treat this file or the passing
+tests as acceptance. See `docs/DELIVERY_REPORT_0.2.0.md` §8–9.
 
 ## 1. Paths and layout
 
@@ -19,34 +28,36 @@ blindly trust prior completion claims, and never weaken tests to get green.
 |---|---|
 | Application repo (git) | `/home/banana/Constellation/Idea Dev/opencode/Kaeru/kaeru` |
 | Workspace root | `/home/banana/Constellation/Idea Dev/opencode/Kaeru` |
-| Original frog artwork (read-only) | `…/KaerU/frog_icons/` |
-| Documentation package (authoritative spec) | `…/KaerU/KaerU_Documentation_Package_v0.1.1/` |
-| Build dir | `…/KaerU/kaeru/build` |
-| Debian artifacts | `…/KaerU/kaeru_0.1.1-1_amd64.deb` (+ `kaeru-dbgsym_0.1.1-1_amd64.ddeb`) and `…/KaerU/kaeru/dist/` |
+| Original frog artwork (read-only) | `…/Kaeru/frog_icons/` |
+| Documentation package (authoritative spec) | `…/Kaeru/Kaeru_Documentation_Package_v0.1.1/` |
+| Build dir | `…/Kaeru/kaeru/build` |
+| Release artifacts | `…/Kaeru/kaeru/dist/0.2.0/` (`dist/` is git-ignored) |
+| Main package | `dist/0.2.0/kaeru_0.2.0-1_amd64.deb` |
+| Optional debug symbols | `dist/0.2.0/debug-symbols/kaeru-dbgsym_0.2.0-1_amd64.ddeb` |
 
 ## 2. Environment and dependencies
 
-- Ubuntu-based Linux (dev machine: Pop!_OS 22.04, GNOME 42, X11).
-- Qt 6.2 development packages (`qt6-base-dev`), CMake ≥ 3.16, C++17
-  compiler (GCC 11 works), `libqt6svg6` (SVG icon engine), `debhelper`,
-  `lintian`, `devscripts` (packaging), `desktop-file-utils` (validation).
-- `sudo` currently requires a password — plan around it (no root-level
-  package operations in a plain session).
-- All tests and test scripts must use `KAERU_TEST_HOME` sandboxes; never
-  point tests at the real `$XDG_*` directories.
+- Pop!_OS 22.04 / Ubuntu 22.04 base, GNOME 42, X11 (Qt 6.2.4); CMake ≥ 3.16,
+  GCC 11, `qt6-base-dev`, `libqt6sql6-sqlite`, `debhelper`, `lintian`,
+  `desktop-file-utils`, `appstream`.
+- `sudo` requires a password — root package operations are blocked in a
+  plain session; ask the owner to run them.
+- Use `KAERU_TEST_HOME` sandboxes for every test; never point tests at real
+  `$XDG_*` directories.
+- GUI acceptance harness: `Xephyr :99 -screen 1200x800`, `DISPLAY=:99`,
+  real session bus/portal, `xdotool` clicks, `ffmpeg` screenshots.
 
-## 3. Reading order (authoritative documents)
+## 3. Reading order
 
-1. This file (onboarding).
-2. `docs/handoff/README.md` — index of the handoff package.
-3. `docs/handoff/KAERU_PROJECT_HISTORY.md` — what Kaeru is, WP-00…07.
-4. `docs/handoff/KAERU_TECHNICAL_ARCHITECTURE.md` — how the code works.
-5. `docs/handoff/KAERU_CURRENT_STATE.md` — exact build/git/test/package state.
-6. `docs/handoff/KAERU_OPEN_ISSUES.md` — the four owner-reported issues + status register.
-7. `docs/capability-matrix.md` — per-capability honesty matrix.
-8. `docs/testing.md`, `docs/privacy.md`, ADRs as referenced.
+1. This file.
+2. `docs/handoff/README.md` — handoff index.
+3. `docs/DELIVERY_REPORT_0.2.0.md` — release scope, evidence, unverified gaps.
+4. `docs/handoff/KAERU_CURRENT_STATE.md` — exact build/git/test/package state.
+5. `docs/handoff/KAERU_OPEN_ISSUES.md` — A–E disposition and remaining gaps.
+6. `docs/handoff/KAERU_TECHNICAL_ARCHITECTURE.md` — subsystem walkthrough.
+7. `docs/capability-matrix.md`, `docs/testing.md`, ADRs as needed.
 
-## 4. Build / test / run (exact commands)
+## 4. Build / test / run
 
 ```bash
 cd "/home/banana/Constellation/Idea Dev/opencode/Kaeru/kaeru"
@@ -55,43 +66,42 @@ cd "/home/banana/Constellation/Idea Dev/opencode/Kaeru/kaeru"
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 
-# Run the tests (13 suites, offscreen, sandboxed)
-cd build && ctest --output-on-failure -j9
+# Tests (15 suites, offscreen, sandboxed)
+cd build && ctest --output-on-failure -j"$(nproc)"
 
 # Run the application
 ./build/kaeru                # GUI
 ./build/kaeru --background   # tray/background
-./build/kaeru status         # CLI (needs a running instance via D-Bus)
-./build/kaeru awake on --duration 30m --mode system
-./build/kaeru focus start --duration 25m
-./build/kaeru work start --project "Example"
-./build/kaeru export --format csv --from 2026-11-01 --to 2026-11-30
-./build/kaeru quit
+./build/kaeru --awake-on-login   # hidden + indefinite (autostart form)
+./build/kaeru status [--json]
+./build/kaeru awake on --duration 30m --mode both
+./build/kaeru awake indefinite
+./build/kaeru awake off
+./build/kaeru diagnostics [--json]
+./build/kaeru open | quit
 
 # Rebuild the Debian package
 dpkg-buildpackage -us -uc -b
-lintian ../kaeru_0.1.1-1_amd64.deb
-
-# Rebuild the staged tarball
-cmake --install build --prefix /tmp/kaeru-stage
+lintian ../kaeru_0.2.0-1_amd64.deb
 ```
+
+Focus, Work Log, Export and Pause-all are **not** available in this release;
+the CLI returns a not-available message when a running instance is present.
 
 ## 5. Debugging
 
-- Process logs: the app prints nothing by default; capture stdout/stderr
-  of the process you launch (e.g. `./build/kaeru --background > kaeru.log 2>&1`).
-- `KAERU_DEBUG_SETTINGS=1` — prints the settings file path and key
-  decisions (set quiet hours etc.) to stderr.
-- `KAERU_TEST_HOME=/tmp/somewhere ./build/kaeru …` — isolate all XDG
-  paths (config/data/cache/runtime) for experiments; this is how every
-  test and integration script works.
-- D-Bus inspection: `busctl --user list | grep kaeru`, `busctl --user
-  introspect io.github.kaeru.KaReru /io/github/kaeru/KaerU`, `dbus-monitor
-  --session "interface='org.freedesktop.Notifications'"`.
-- Inhibition checks: `systemd-inhibit --list | grep -i kaeru`;
-  portal traffic via `dbus-monitor --session "interface='org.freedesktop.portal.Inhibit'"`.
-- SQLite: `sqlite3 "$XDG_DATA_HOME/kaeru/kaeru.db" "SELECT …"` (only in
-  sandboxes or with explicit user approval for real data).
+- Capture the process output: `./build/kaeru --background > kaeru.log 2>&1`.
+- `KAERU_TEST_HOME=/tmp/opencode/sandbox` isolates config/data/cache/runtime.
+- `KAERU_DEBUG_SETTINGS=1` prints settings decisions to stderr.
+- `KAERU_DEBUG_PORTAL=1` prints portal handle subscription and response
+  lines (gated; safe to leave off).
+- D-Bus: `busctl --user list | grep kaeru`, introspect
+  `io.github.kaeru.Kaeru`; the tray item is registered under the app’s unique
+  bus name (`:1.x/StatusNotifierItem`), not a fixed well-known name.
+- Portal inhibitors do **not** appear in `systemd-inhibit --list` on this
+  system; use `kaeru status --json`, DBus signals and absence after release.
+- SQLite: do not open the real database while Work Log is deferred. Use a
+  sandbox copy if inspecting historical data.
 
 ## 6. Source map (entry points)
 
@@ -99,53 +109,52 @@ cmake --install build --prefix /tmp/kaeru-stage
 |---|---|
 | Entry / modes / single instance | `src/app/main.cpp`, `src/app/CliParser.{h,cpp}`, `src/platform/SingleInstance.{h,cpp}` |
 | Wiring root | `src/app/Application.{h,cpp}` |
-| Commands (UI/CLI/D-Bus share) | `src/app/CommandRouter.{h,cpp}`, `src/app/ControlService.{h,cpp}` |
-| Settings / paths | `src/app/Settings.{h,cpp}`, `src/app/Paths.{h,cpp}` |
-| Keep Awake core | `src/core/InhibitionRegistry`, `InhibitionCoordinator`, `InhibitionBackend.h`, `FakeInhibitionBackend` |
+| Single manual Keep Awake session | `src/core/ManualAwakeSession.{h,cpp}` |
+| Keep Awake registry/coordinator | `src/core/InhibitionRegistry`, `InhibitionCoordinator`, `InhibitionBackend.h`, `FakeInhibitionBackend` |
 | Keep Awake backends | `src/platform/PortalInhibitBackend`, `LogindInhibitBackend` |
-| Clocks/timers/focus | `src/core/Clock`, `TimerEngine`, `FocusController` |
-| Tray state mapping | `src/core/TrayState.h` (ADR-008) |
-| Work Log | `src/app/WorkSessionManager.{h,cpp}`, `src/storage/SessionRepository.{h,cpp}` |
-| Storage/migrations/CSV | `src/storage/Database`, `Migrations`, `ProjectRepository`, `CsvExport` |
-| UI shell/pages | `src/ui/MainWindow`, `src/ui/TrayController`, `src/ui/pages/*` |
-| Icons (frog) | `src/ui/Icons.{h,cpp}`, `resources/icons/frog/` |
+| Commands (UI/CLI/D-Bus share) | `src/app/CommandRouter.{h,cpp}`, `ControlService.{h,cpp}` |
+| Settings / paths / autostart | `src/app/Settings`, `Paths`, `platform/AutostartBackend` |
+| Clocks/timers | `src/core/Clock`, `TimerEngine` |
+| Deferred Focus | `src/core/FocusController`, `src/ui/pages/FocusPage` (compiled, not shown) |
+| Deferred Work Log | `src/app/WorkSessionManager`, `src/storage/SessionRepository` (gated/read-only) |
+| Storage/migrations/CSV | `src/storage/*` (not opened while Work Log is deferred) |
+| UI shell/pages | `src/ui/MainWindow`, `src/ui/TrayController`, `src/ui/pages/{Overview,Settings,Diagnostics}Page` |
+| Icons (frog) | `src/ui/Icons.{h,cpp}`, `resources/icons/frog/` (embedded PNGs; installed SVGs) |
 | Build/install | `CMakeLists.txt`, `debian/*`, `kaeru.1` |
-| Tests | `tests/unit/test_*.cpp` (13 suites) |
+| Tests | `tests/unit/test_*.cpp` (15 suites) |
 
 ## 7. Evidence locations
 
-- `docs/evidence-wp02..06.md` — native evidence with exact commands.
-- `docs/evidence/` — tray icon/panel-diff crops (safe, committed).
-- `docs/delivery-report.md` — release candidate report.
-- `/tmp/opencode/` on this machine holds throwaway probes/scripts from the
-  project sessions (not part of the repo).
+- `docs/DELIVERY_REPORT_0.2.0.md` — primary 0.2.0 evidence and limitations.
+- `docs/handoff/KAERU_OPEN_ISSUES.md` — per-issue disposition.
+- `docs/evidence-wp02..06.md` — earlier native evidence (0.1.1 scope).
+- `dist/0.2.0/README.md`, `SHA256SUMS` — release artifacts.
+- `/tmp/opencode/` — throwaway probes/screenshots from this session (not in
+  the repo).
 
 ## 8. Change procedure and approval boundary
 
-- Follow `AGENTS.md`: core has no GUI/DBus/SQL; platform behind
-  interfaces; all user commands through `CommandRouter`; tests in
-  `KAERU_TEST_HOME` sandboxes; build green at each commit; packaging via
-  `debian/` only; never synthesize input; never log private content.
-- **Product-owner approval is required** before: redesigning the Focus
-  module (Issue C), changing work-log recording semantics (Issue D),
-  changing keep-awake stacking/duration semantics (Issue B), replacing or
-  regenerating the frog artwork (Issue E fix direction), or any
-  packaging-behavior change (Issue A).
-- Bug fixes that do not change product behavior (e.g. the refresh-hides-
-  warning defect, resource loading) may proceed with tests, but the
-  owner's four issues should be discussed first — several need decisions,
-  not just code.
-- Do not weaken or delete tests; add tests for new behavior.
-- Commit style: small, logical, message describing the change; the
-  history is linear on `main` (no branches, no remotes).
+- Follow `AGENTS.md`: core has no GUI/DBus/SQL; platform behind interfaces;
+  all user commands through `CommandRouter`; tests in `KAERU_TEST_HOME`;
+  build green; packaging via `debian/` only; never synthesize input; never
+  log private content.
+- **Do not re-enable Focus or Work Log in the GUI/CLI** without an explicit
+  product decision, a new design for Focus, and agreed recording semantics
+  for Work Log. Their source/tests/data must stay preserved until then.
+- Do not modify `../frog_icons/` or the approved Master Specification.
+- Do not rewrite Git history or push.
+- Do not weaken tests; add coverage for new behavior.
+- Product-owner approval is required for Keep Awake semantics changes, Focus
+  redesign, Work Log semantics, and packaging behavior changes.
 
-## 9. What to do first (suggested order, subject to owner direction)
+## 9. What to do first
 
-1. Reproduce Issue E (focused icon) with a fresh build and confirm the
-   black-face rendering; propose a fix (PNG fallback or SVG restructure)
-   to the owner.
-2. Reproduce Issue B with the GUI (stacked durations + Indefinitely) and
-   capture evidence; propose semantics (replace vs stack).
-3. Discuss Issues C and D with the owner before touching code.
-4. Clarify Issue A delivery instructions (single-file install).
-5. Only then: fix, test, document, commit — one coherent change at a time.
+1. Run the root-assisted package lifecycle test in
+   `docs/DELIVERY_REPORT_0.2.0.md` §9 (install, upgrade, remove, reinstall;
+   verify data preservation).
+2. Ask the owner to use the 0.2.0 GUI and confirm the Keep Awake flows and
+   the simplified three-page layout.
+3. If accepted, decide the next feature: Focus redesign or Work Log
+   semantics — one at a time, with a written acceptance plan.
+4. Only then re-enable a deferred module, restoring its UI/CLI paths and
+   tests behind an explicit opt-in.
