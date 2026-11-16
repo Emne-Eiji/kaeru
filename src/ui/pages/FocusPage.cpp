@@ -1,6 +1,7 @@
 #include "FocusPage.h"
 #include "ui/widgets/StatusBadge.h"
 
+#include "app/Settings.h"
 #include "core/Duration.h"
 
 #include <QCheckBox>
@@ -9,6 +10,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QSpinBox>
 #include <QVBoxLayout>
 
@@ -134,11 +136,37 @@ FocusPage::FocusPage(Application* app, QWidget* parent)
     connect(m_app->focus(), &FocusController::stateChanged, this, &FocusPage::refresh);
     connect(m_app->appState(), &AppState::changed, this, [this] { refresh(); });
 
+    // Seed the routine widgets from persisted preferences (the controller is
+    // seeded from the same Settings by Application at startup). Seeding must
+    // NOT write settings back — block the change signals.
+    Settings* s = m_app->settings();
+    {
+        const QSignalBlocker blockWork(m_workMinutes);
+        const QSignalBlocker blockShort(m_shortBreak);
+        const QSignalBlocker blockLong(m_longBreak);
+        const QSignalBlocker blockEvery(m_longEvery);
+        const QSignalBlocker blockAuto(m_autoNext);
+        const QSignalBlocker blockKAWork(m_keepAwakeWork);
+        const QSignalBlocker blockKABreaks(m_keepAwakeBreaks);
+        const QSignalBlocker blockRecord(m_recordWorkLog);
+        m_customMinutes->setValue(s->focusWorkMinutes());
+        m_workMinutes->setValue(s->focusWorkMinutes());
+        m_shortBreak->setValue(s->focusShortBreakMinutes());
+        m_longBreak->setValue(s->focusLongBreakMinutes());
+        m_longEvery->setValue(s->focusLongBreakEvery());
+        m_autoNext->setChecked(s->focusAutoNext());
+        m_keepAwakeWork->setChecked(s->focusKeepAwakeDuringWork());
+        m_keepAwakeBreaks->setChecked(s->focusKeepAwakeDuringBreaks());
+        m_recordWorkLog->setChecked(s->focusRecordInWorkLog());
+    }
+
     refresh();
 }
 
 void FocusPage::applyOptionsToController()
 {
+    FocusController* f = m_app->focus();
+    const FocusController::Options& current = f->options();
     FocusController::Options o;
     o.workMs = m_workMinutes->value() * 60 * 1000;
     o.shortBreakMs = m_shortBreak->value() * 60 * 1000;
@@ -149,7 +177,12 @@ void FocusPage::applyOptionsToController()
     o.keepAwakeDuringBreaks = m_keepAwakeBreaks->isChecked();
     o.recordInWorkLog = m_recordWorkLog->isChecked();
     o.notifyOnInterval = m_app->settings()->notificationsEnabled();
-    m_app->focus()->setOptions(o);
+    o.soundOnNotify = m_app->settings()->soundEnabled();
+    // Quiet hours are configured in Settings; keep whatever is active there.
+    o.quietHoursEnabled = current.quietHoursEnabled;
+    o.quietFromMinutes = current.quietFromMinutes;
+    o.quietToMinutes = current.quietToMinutes;
+    f->setOptions(o);
 
     // Persist settings
     m_app->settings()->setFocusWorkMinutes(m_workMinutes->value());

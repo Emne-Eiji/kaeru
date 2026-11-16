@@ -54,6 +54,10 @@ public:
 
     void prepareQuit(); // release inhibitors, close recording; called before quit
 
+    // Re-seed the focus controller from persisted preferences (called after
+    // settings changes so quiet hours / notifications apply immediately).
+    void applyFocusSettingsFromSettings();
+
     // Focus ↔ keep-awake wiring per settings
     void applyFocusKeepAwake(bool active, const QString& reason);
 

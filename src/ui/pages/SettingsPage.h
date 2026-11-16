@@ -9,6 +9,7 @@ class QCheckBox;
 class QComboBox;
 class QLabel;
 class QPushButton;
+class QTimeEdit;
 
 namespace kaeru {
 
@@ -39,6 +40,8 @@ private:
     QCheckBox* m_notifyEnabled = nullptr;
     QCheckBox* m_notifySound = nullptr;
     QCheckBox* m_quietHours = nullptr;
+    QTimeEdit* m_quietFromEdit = nullptr;
+    QTimeEdit* m_quietToEdit = nullptr;
     QComboBox* m_themeBox = nullptr;
     QLabel* m_configPath = nullptr;
     QLabel* m_dataPath = nullptr;

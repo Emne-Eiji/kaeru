@@ -13,7 +13,11 @@ public:
     explicit Notifications(QObject* parent = nullptr);
 
     bool available() const;
-    void notify(const QString& title, const QString& body, const QString& iconName = QString());
+    // soundName: optional XDG sound name passed via the "sound-name" hint
+    // (freedesktop notifications spec). Playback is delegated to the
+    // notification daemon (GNOME 42 plays it via libcanberra); empty = none.
+    void notify(const QString& title, const QString& body,
+                const QString& iconName = QString(), const QString& soundName = QString());
 
 signals:
     void notificationClosed(uint id, uint reason);

@@ -21,7 +21,7 @@
 | Suspend/resume detection | implemented (signal) | logind `PrepareForSleep` | real-suspend full test = manual procedure (not auto-triggered) |
 | Tray icon (SNI) | implemented + live-tested WP-03 | QSystemTrayIcon → StatusNotifierItem | SNI item registered on watcher (`:1.149/StatusNotifierItem`), tooltip state-reflecting, DBusMenu present; **icon image renders blank on this dev box** (Qt6 qsvg not installed — see evidence-wp03 §4); renders once `libqt6svg6` present (declared as .deb dependency) |
 | No-tray fallback | implemented | control window | always available; tray-unavailable retry/backoff (5×1 s) |
-| Notifications | implemented | org.freedesktop.Notifications | quiet-hours respected |
+| Notifications | implemented + native-tested WP-04 | org.freedesktop.Notifications | focus-interval + keep-awake-expiry notifications; quiet-hours suppression verified natively (0 notifications all-day-quiet; config preserved); sound via XDG `sound-name` hint (audible check manual); policy unit-tested (test_notify) |
 | Autostart (opt-in) | implemented + sandbox-tested WP-03 | XDG user autostart file | off by default; only Kaeru's own entry (15/15 harness checks); GUI toggle wired to same backend |
 | Single instance + IPC | implemented + live-tested WP-03 | D-Bus session service | second launch forwards ShowWindow + exits 0 (two takeover bugs found & fixed, CHANGELOG); CLI via same binary |
 | Idle detection (input-activity) | **unavailable (out of 1.0 scope)** | — | manual tracking unaffected; reported honestly in Diagnostics |

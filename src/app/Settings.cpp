@@ -4,6 +4,8 @@
 #include <QDir>
 #include <QStandardPaths>
 
+#include <cstdio>
+
 namespace kaeru {
 
 Settings::Settings(QObject* parent)
@@ -11,6 +13,11 @@ Settings::Settings(QObject* parent)
     , m_settings(Paths::settingsFile(), QSettings::IniFormat)
 {
     QDir().mkpath(Paths::configDir());
+    if (qEnvironmentVariableIsSet("KAERU_DEBUG_SETTINGS")) {
+        std::fprintf(stderr, "[kaeru] settings file: %s status=%d quietHours=%d\n",
+                     qPrintable(Paths::settingsFile()), int(m_settings.status()),
+                     m_settings.value(QStringLiteral("notifications/quietHoursEnabled"), false).toBool() ? 1 : 0);
+    }
 }
 
 bool Settings::moduleEnabled(Module m) const
@@ -69,11 +76,25 @@ bool Settings::focusRecordInWorkLog() const { return m_settings.value(QStringLit
 void Settings::setFocusRecordInWorkLog(bool on) { m_settings.setValue(QStringLiteral("focus/recordInWorkLog"), on); m_settings.sync(); emit changed(); }
 
 bool Settings::quietHoursEnabled() const { return m_settings.value(QStringLiteral("notifications/quietHoursEnabled"), false).toBool(); }
-void Settings::setQuietHoursEnabled(bool on) { m_settings.setValue(QStringLiteral("notifications/quietHoursEnabled"), on); m_settings.sync(); emit changed(); }
+void Settings::setQuietHoursEnabled(bool on)
+{
+    if (qEnvironmentVariableIsSet("KAERU_DEBUG_SETTINGS"))
+        std::fprintf(stderr, "[kaeru] setQuietHoursEnabled(%d)\n", on ? 1 : 0);
+    m_settings.setValue(QStringLiteral("notifications/quietHoursEnabled"), on);
+    m_settings.sync();
+    emit changed();
+}
 QString Settings::quietFrom() const { return m_settings.value(QStringLiteral("notifications/quietFrom"), QStringLiteral("22:00")).toString(); }
 void Settings::setQuietFrom(const QString& v) { m_settings.setValue(QStringLiteral("notifications/quietFrom"), v); m_settings.sync(); emit changed(); }
 QString Settings::quietTo() const { return m_settings.value(QStringLiteral("notifications/quietTo"), QStringLiteral("07:00")).toString(); }
-void Settings::setQuietTo(const QString& v) { m_settings.setValue(QStringLiteral("notifications/quietTo"), v); m_settings.sync(); emit changed(); }
+void Settings::setQuietTo(const QString& v)
+{
+    if (qEnvironmentVariableIsSet("KAERU_DEBUG_SETTINGS"))
+        std::fprintf(stderr, "[kaeru] setQuietTo(%s)\n", qPrintable(v));
+    m_settings.setValue(QStringLiteral("notifications/quietTo"), v);
+    m_settings.sync();
+    emit changed();
+}
 
 bool Settings::keepAwakeNotifications() const { return m_settings.value(QStringLiteral("keepAwake/notifyOnExpiry"), true).toBool(); }
 void Settings::setKeepAwakeNotifications(bool on) { m_settings.setValue(QStringLiteral("keepAwake/notifyOnExpiry"), on); m_settings.sync(); emit changed(); }

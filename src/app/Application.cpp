@@ -9,9 +9,14 @@
 #include "platform/PortalInhibitBackend.h"
 #include "platform/ThemeWatcher.h"
 
+#include "core/NotifyPolicy.h"
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QSettings>
+#include <QTime>
+
+#include <cstdio>
 
 namespace kaeru {
 
@@ -32,11 +37,13 @@ Application::Application(bool backgroundMode, QObject* parent)
     m_state.setModuleEnabled(Module::WorkLog, m_settings->moduleEnabled(Module::WorkLog));
 
     m_focus = new FocusController(&m_timers, this);
+    applyFocusSettingsFromSettings();
 
     setupBackends();
 
     // Focus controller wiring: keep awake during focus/breaks per settings,
-    // notifications on interval completion.
+    // notifications on interval completion (policy-gated: notify option +
+    // quiet hours; never touches system DND).
     connect(m_focus, &FocusController::intervalStarted, this, [this](FocusController::Phase phase) {
         const bool isBreak = phase == FocusController::Phase::ShortBreak || phase == FocusController::Phase::LongBreak;
         const bool keepAwake = isBreak ? m_settings->focusKeepAwakeDuringBreaks() : m_settings->focusKeepAwakeDuringWork();
@@ -49,6 +56,55 @@ Application::Application(bool backgroundMode, QObject* parent)
             Q_UNUSED(planned)
             emit focusIntervalFinished(phase);
         });
+
+    // Focus interval notifications (WP-04): plain desktop notification with
+    // optional XDG sound name; suppressed by the notify option / quiet hours.
+    connect(this, &Application::focusIntervalFinished, this, [this](FocusController::Phase phase) {
+        if (!m_notifications || !m_notifications->available())
+            return;
+        const bool notifyEnabled = m_settings->notificationsEnabled()
+            && m_focus->options().notifyOnInterval;
+        const bool quietActive = m_focus->quietHoursActive();
+        const NotifyDecision decision = decideFocusIntervalNotification(notifyEnabled, quietActive);
+        if (qEnvironmentVariableIsSet("KAERU_DEBUG_SETTINGS"))
+            std::fprintf(stderr, "[kaeru] notify decision: want=%d quiet=%d → notify=%d (%s)\n",
+                         notifyEnabled ? 1 : 0, quietActive ? 1 : 0,
+                         decision.notify ? 1 : 0, qPrintable(decision.reason));
+        if (!decision.notify)
+            return;
+        const QString sound = m_settings->soundEnabled() ? QStringLiteral("complete") : QString();
+        if (phase == FocusController::Phase::Work
+            && m_focus->mode() == FocusController::Mode::Custom) {
+            m_notifications->notify(tr("Focus countdown complete"),
+                tr("Your focus countdown has finished."), QString(), sound);
+        } else if (phase == FocusController::Phase::Work) {
+            const bool longBreak = m_focus->completedWorkIntervals() > 0
+                && m_focus->completedWorkIntervals() % (m_focus->options().longBreakEvery <= 0
+                                                            ? 4 : m_focus->options().longBreakEvery) == 0;
+            m_notifications->notify(tr("Focus interval complete"),
+                longBreak ? tr("Time for a long break.") : tr("Time for a short break."),
+                QString(), sound);
+        } else {
+            m_notifications->notify(tr("Break over"),
+                m_focus->options().autoNext
+                    ? tr("The next focus interval has started.")
+                    : tr("Ready for the next focus interval."),
+                QString(), sound);
+        }
+    });
+
+    // Timed keep-awake expiry notification (user setting).
+    connect(this, &Application::keepAwakeExpired, this, [this](const QString& reason) {
+        if (!m_notifications || !m_notifications->available())
+            return;
+        const NotifyDecision decision =
+            decideKeepAwakeExpiryNotification(m_settings->notificationsEnabled()
+                                              && m_settings->keepAwakeNotifications());
+        if (!decision.notify)
+            return;
+        const QString sound = m_settings->soundEnabled() ? QStringLiteral("complete") : QString();
+        m_notifications->notify(tr("Keep awake ended"), reason, QString(), sound);
+    });
 
     // Platform monitors
     if (m_powerMonitor) {
@@ -265,6 +321,33 @@ void Application::applyFocusKeepAwake(bool active, const QString& reason)
         m_inhibition.removeRequest(focusRequestId);
         focusRequestId = QUuid();
     }
+}
+
+void Application::applyFocusSettingsFromSettings()
+{
+    // Seed the controller from persisted preferences (quiet hours included;
+    // the UI page preserves quiet fields when it re-applies its widgets).
+    FocusController::Options o;
+    o.workMs = m_settings->focusWorkMinutes() * 60LL * 1000;
+    o.shortBreakMs = m_settings->focusShortBreakMinutes() * 60LL * 1000;
+    o.longBreakMs = m_settings->focusLongBreakMinutes() * 60LL * 1000;
+    o.longBreakEvery = m_settings->focusLongBreakEvery();
+    o.autoNext = m_settings->focusAutoNext();
+    o.keepAwakeDuringWork = m_settings->focusKeepAwakeDuringWork();
+    o.keepAwakeDuringBreaks = m_settings->focusKeepAwakeDuringBreaks();
+    o.recordInWorkLog = m_settings->focusRecordInWorkLog();
+    o.notifyOnInterval = m_settings->notificationsEnabled();
+    o.soundOnNotify = m_settings->soundEnabled();
+    o.quietHoursEnabled = m_settings->quietHoursEnabled();
+    const QTime from = QTime::fromString(m_settings->quietFrom(), QStringLiteral("HH:mm"));
+    const QTime to = QTime::fromString(m_settings->quietTo(), QStringLiteral("HH:mm"));
+    o.quietFromMinutes = from.isValid() ? from.hour() * 60 + from.minute() : 0;
+    o.quietToMinutes = to.isValid() ? to.hour() * 60 + to.minute() : 0;
+    if (qEnvironmentVariableIsSet("KAERU_DEBUG_SETTINGS"))
+        std::fprintf(stderr, "[kaeru] focus options: quiet=%d from=%d to=%d\n",
+                     o.quietHoursEnabled ? 1 : 0, o.quietFromMinutes, o.quietToMinutes);
+    if (m_focus)
+        m_focus->setOptions(o);
 }
 
 void Application::prepareQuit()

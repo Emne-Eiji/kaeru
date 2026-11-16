@@ -13,6 +13,9 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QSignalBlocker>
+#include <QTime>
+#include <QTimeEdit>
 #include <QVBoxLayout>
 
 namespace kaeru {
@@ -74,6 +77,21 @@ SettingsPage::SettingsPage(Application* app, QWidget* parent)
     m_quietHours = new QCheckBox(tr("Respect quiet hours (focus notifications only)"), notifCard);
     connect(m_quietHours, &QCheckBox::toggled, this, &SettingsPage::onNotificationsChanged);
     cardLayout->addWidget(m_quietHours);
+    auto* quietRow = new QHBoxLayout();
+    quietRow->addWidget(new QLabel(tr("From"), notifCard));
+    m_quietFromEdit = new QTimeEdit(notifCard);
+    m_quietFromEdit->setDisplayFormat(QStringLiteral("HH:mm"));
+    m_quietFromEdit->setAccessibleName(tr("Quiet hours start"));
+    connect(m_quietFromEdit, &QTimeEdit::timeChanged, this, &SettingsPage::onNotificationsChanged);
+    quietRow->addWidget(m_quietFromEdit);
+    quietRow->addWidget(new QLabel(tr("to"), notifCard));
+    m_quietToEdit = new QTimeEdit(notifCard);
+    m_quietToEdit->setDisplayFormat(QStringLiteral("HH:mm"));
+    m_quietToEdit->setAccessibleName(tr("Quiet hours end"));
+    connect(m_quietToEdit, &QTimeEdit::timeChanged, this, &SettingsPage::onNotificationsChanged);
+    quietRow->addWidget(m_quietToEdit);
+    quietRow->addStretch(1);
+    cardLayout->addLayout(quietRow);
     root->addWidget(notifCard);
 
     // ---- Appearance ----
@@ -148,19 +166,37 @@ void SettingsPage::refresh()
 void SettingsPage::loadFromSettings()
 {
     Settings* s = m_app->settings();
-    for (int i = 0; i < m_moduleChecks.size(); ++i) {
-        const Module m = static_cast<Module>(i);
-        m_moduleChecks.at(i)->setChecked(s->moduleEnabled(m));
+    // Loading the view must NEVER write settings: every setter below fires a
+    // change signal (toggled / timeChanged / currentIndexChanged) whose slot
+    // persists widget state — block all of them while seeding.
+    {
+        QSignalBlocker b1(m_startAfterLogin);
+        QSignalBlocker b2(m_keepAwakeOnLogin);
+        QSignalBlocker b3(m_notifyEnabled);
+        QSignalBlocker b4(m_notifySound);
+        QSignalBlocker b5(m_quietHours);
+        QSignalBlocker b6(m_quietFromEdit);
+        QSignalBlocker b7(m_quietToEdit);
+        QSignalBlocker b8(m_themeBox);
+        for (int i = 0; i < m_moduleChecks.size(); ++i) {
+            const Module m = static_cast<Module>(i);
+            QSignalBlocker block(m_moduleChecks.at(i));
+            m_moduleChecks.at(i)->setChecked(s->moduleEnabled(m));
+        }
+        m_startAfterLogin->setChecked(s->startAfterLogin());
+        m_keepAwakeOnLogin->setChecked(s->keepAwakeOnLogin());
+        m_notifyEnabled->setChecked(s->notificationsEnabled());
+        m_notifySound->setChecked(s->soundEnabled());
+        m_quietHours->setChecked(s->quietHoursEnabled());
+        m_quietFromEdit->setTime(QTime::fromString(s->quietFrom(), QStringLiteral("HH:mm")));
+        m_quietToEdit->setTime(QTime::fromString(s->quietTo(), QStringLiteral("HH:mm")));
+        m_quietFromEdit->setEnabled(s->quietHoursEnabled());
+        m_quietToEdit->setEnabled(s->quietHoursEnabled());
+        const QString theme = s->theme();
+        m_themeBox->setCurrentIndex(theme == QLatin1String("light") ? 1
+                                  : theme == QLatin1String("dark")  ? 2
+                                                                    : 0);
     }
-    m_startAfterLogin->setChecked(s->startAfterLogin());
-    m_keepAwakeOnLogin->setChecked(s->keepAwakeOnLogin());
-    m_notifyEnabled->setChecked(s->notificationsEnabled());
-    m_notifySound->setChecked(s->soundEnabled());
-    m_quietHours->setChecked(s->quietHoursEnabled());
-    const QString theme = s->theme();
-    m_themeBox->setCurrentIndex(theme == QLatin1String("light") ? 1
-                              : theme == QLatin1String("dark")  ? 2
-                                                                : 0);
 }
 
 void SettingsPage::refreshStoragePaths()
@@ -188,7 +224,14 @@ void SettingsPage::onNotificationsChanged()
     Settings* s = m_app->settings();
     s->setNotificationsEnabled(m_notifyEnabled->isChecked());
     s->setSoundEnabled(m_notifySound->isChecked());
-    s->setQuietHoursEnabled(m_quietHours->isChecked());
+    const bool quiet = m_quietHours->isChecked();
+    s->setQuietHoursEnabled(quiet);
+    m_quietFromEdit->setEnabled(quiet);
+    m_quietToEdit->setEnabled(quiet);
+    s->setQuietFrom(m_quietFromEdit->time().toString(QStringLiteral("HH:mm")));
+    s->setQuietTo(m_quietToEdit->time().toString(QStringLiteral("HH:mm")));
+    // Re-seed the focus controller so quiet hours take effect immediately.
+    m_app->applyFocusSettingsFromSettings();
 }
 
 void SettingsPage::onThemeChanged(int index)

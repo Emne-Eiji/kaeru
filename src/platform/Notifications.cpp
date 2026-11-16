@@ -21,7 +21,8 @@ bool Notifications::available() const
     return m_available;
 }
 
-void Notifications::notify(const QString& title, const QString& body, const QString& iconName)
+void Notifications::notify(const QString& title, const QString& body, const QString& iconName,
+                           const QString& soundName)
 {
     if (!m_available)
         return;
@@ -32,13 +33,17 @@ void Notifications::notify(const QString& title, const QString& body, const QStr
     if (!notify.isValid())
         return;
 
+    QVariantMap hints;
+    if (!soundName.isEmpty())
+        hints.insert(QStringLiteral("sound-name"), soundName);
+
     QVariantList args;
     args << QStringLiteral("io.github.kaeru.Kaeru")       // app_name
          << uint(0)                                       // replaces_id
          << (iconName.isEmpty() ? QStringLiteral("io.github.kaeru.Kaeru") : iconName)
          << title << body
          << QStringList()                                 // actions
-         << QVariantMap()                                 // hints
+         << hints
          << int(6000);                                    // expire_timeout ms
     notify.asyncCallWithArgumentList(QStringLiteral("Notify"), args);
 }
