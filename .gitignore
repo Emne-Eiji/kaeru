@@ -12,3 +12,11 @@ moc_*.cpp
 !docs/**/*.log
 # Release artifacts (regenerated; not committed)
 dist/
+
+# debhelper build artifacts
+obj-*/
+debian/.debhelper/
+debian/files
+debian/*.substvars
+debian/debhelper-build-stamp
+debian/kaeru/

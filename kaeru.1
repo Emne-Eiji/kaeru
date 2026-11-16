@@ -1,0 +1,73 @@
+.TH KAERU 1 "2026-11-16" "kaeru 0.1.1" "Kaeru manual"
+.SH NAME
+kaeru \- keep awake, focus timer and honest work log
+.SH SYNOPSIS
+.B kaeru
+[\fIcommand\fR] [\fIoptions\fR]
+.SH DESCRIPTION
+.B Kaeru
+prevents unwanted automatic system sleep (via the xdg\-desktop\-portal
+Inhibit interface, with a systemd\-logind sleep:block fallback), optionally
+keeps the display awake, runs focus intervals (countdown or Pomodoro) and
+records a suspend\-aware work log with CSV export. It never modifies global
+power\-management settings and never synthesizes input activity.
+.SH COMMANDS
+.TP
+.B (no command)
+Open the application window.
+.TP
+.B \-\-background
+Start without showing the window (tray only).
+.TP
+.B status
+[\fB\-\-json\fR]
+Show current status (keep\-awake state, focus, work log).
+.TP
+.B awake on
+[\fB\-\-duration\fR \fI30m\fR] [\fB\-\-mode\fR \fIsystem|display|both\fR]
+Request keep\-awake; optionally timed.
+.TP
+.B awake off
+Turn keep\-awake off now (suppresses automatic requests until resumed).
+.TP
+.B focus \fIstart|pause|resume|skip|stop|extend\fR
+[\fB\-\-duration\fR \fI25m\fR]
+Control the focus timer.
+.TP
+.B work \fIstart|pause|resume|stop\fR
+[\fB\-\-project\fR \fINAME\fR]
+Control the work log recording.
+.TP
+.B export \fB\-\-format\fR \fIcsv\fR \fB\-\-from\fR \fIYYYY\-MM\-DD\fR \fB\-\-to\fR \fIYYYY\-MM\-DD\fR
+[\fB\-\-output\fR \fIFILE\fR]
+Export the work log as CSV (spreadsheet formula\-injection protected).
+.TP
+.B pause\-all | diagnostics | open | quit
+Pause all modules; show capability diagnostics; open the window; quit.
+.SH EXIT CODES
+.TP
+.B 0
+ok
+.TP
+.B 2
+usage error
+.TP
+.B 3
+Kaeru not running
+.TP
+.B 4
+failed
+.TP
+.B 5
+permission denied
+.SH FILES
+.TP
+.I $XDG_CONFIG_HOME/kaeru/
+Settings (kaeru.conf).
+.TP
+.I $XDG_DATA_HOME/kaeru/kaeru.db
+Work log SQLite database (WAL).
+.SH AUTHOR
+Kaeru contributors.
+.SH LICENSE
+GPL\-3.0\-or\-later.

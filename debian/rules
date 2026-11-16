@@ -1,0 +1,11 @@
+#!/usr/bin/make -f
+# Kaeru — debhelper rules (AGENTS.md: debian/ only via debhelper;
+# no network in maintainer scripts; user data never touched).
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@ --buildsystem=cmake
+
+# Unit tests run in CI/regression (ctest) rather than during the package
+# build: the build user's environment is not the validation environment.
+override_dh_auto_test:

@@ -114,6 +114,7 @@ install(TARGETS kaeru RUNTIME DESTINATION bin)
 install(FILES resources/io.github.kaeru.Kaeru.desktop DESTINATION share/applications RENAME io.github.kaeru.Kaeru.desktop)
 install(FILES resources/io.github.kaeru.Kaeru.metainfo.xml DESTINATION share/metainfo RENAME io.github.kaeru.Kaeru.metainfo.xml)
 install(FILES README.md DESTINATION share/doc/kaeru)
+install(FILES kaeru.1 DESTINATION share/man/man1)
 install(FILES LICENSE DESTINATION share/doc/kaeru)
 
 # Official frog icon identity (ADR-008): scalable SVGs + raster fallbacks

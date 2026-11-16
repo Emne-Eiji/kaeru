@@ -1,0 +1,29 @@
+Source: kaeru
+Section: utils
+Priority: optional
+Maintainer: Kaeru Maintainers <kaeru@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13),
+               cmake (>= 3.16),
+               qt6-base-dev (>= 6.2)
+Standards-Version: 4.6.2
+Homepage: https://github.com/kaeru/kaeru
+Rules-Requires-Root: no
+
+Package: kaeru
+Architecture: any
+Depends: ${misc:Depends},
+         ${shlibs:Depends},
+         libqt6sql6-sqlite,
+         libqt6svg6
+Recommends: xdg-desktop-portal
+Description: Keep awake, focus timer and honest work log
+ Kaeru is a lightweight desktop utility that prevents unwanted automatic
+ system sleep (via the xdg-desktop-portal Inhibit interface with a logind
+ fallback), optionally keeps the display awake, runs focus intervals
+ (countdown or Pomodoro) and records an honest, suspend-aware work log
+ with projects and CSV export.
+ .
+ It is local-first: no accounts, no cloud, no telemetry, no synthesized
+ input activity. It never modifies global power-management settings.
+ .
+ The frog icon set is Kaeru's official visual identity.
