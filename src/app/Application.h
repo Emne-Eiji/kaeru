@@ -5,6 +5,7 @@
 #include "core/CapabilityRegistry.h"
 #include "core/FocusController.h"
 #include "core/InhibitionCoordinator.h"
+#include "core/ManualAwakeSession.h"
 #include "core/TimerEngine.h"
 #include "core/Types.h"
 #include "storage/Database.h"
@@ -74,6 +75,7 @@ public:
     void applyFocusKeepAwake(bool active, const QString& reason);
 
     EffectiveAwakeState awakeState() const;
+    bool manualAwakeIndefinite() const { return m_manualAwake.isIndefinite(); }
 
     // Diagnostics snapshot (safe fields only — no private content)
     QVariantMap diagnosticsJson() const;
@@ -87,7 +89,7 @@ signals:
 
 private slots:
     void onTick();
-    void onTimerCompleted(const QString& id, const QString& label);
+    void onKeepAwakeExpired(const QUuid& requestId, const kaeru::InhibitionRequest& request);
     void onPrepareForSleep(bool start);
     void onLockChanged(bool locked);
 
@@ -95,6 +97,7 @@ private:
     void setupBackends();
     void setupStorage();
     void startTickTimer();
+    QUuid beginManualAwake(const InhibitionRequest& request);
 
     bool m_background = false;
     AppState m_state;
@@ -102,6 +105,7 @@ private:
     std::unique_ptr<Settings> m_settings;
     TimerEngine m_timers;
     InhibitionCoordinator m_inhibition;
+    ManualAwakeSession m_manualAwake;
     FocusController* m_focus = nullptr;
 
     std::unique_ptr<PortalInhibitBackend> m_portalBackend;

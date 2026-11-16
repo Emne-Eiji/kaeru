@@ -74,9 +74,19 @@ void InhibitionCoordinator::releaseAll()
 void InhibitionCoordinator::tick(const QDateTime& nowUtc)
 {
     m_wallNow = nowUtc;
+    // Snapshot before expiry so the signal carries the original reason and
+    // expiration details to the UI/notification layer.
+    const QList<InhibitionRequest> before = m_registry.requests();
     const QList<QUuid> expiredIds = m_registry.expireElapsed(nowUtc);
     for (const QUuid& id : expiredIds) {
-        emit expired(id, InhibitionRequest());
+        InhibitionRequest expiredRequest;
+        for (const InhibitionRequest& r : before) {
+            if (r.id == id) {
+                expiredRequest = r;
+                break;
+            }
+        }
+        emit expired(id, expiredRequest);
     }
     resolve(nowUtc);
 }

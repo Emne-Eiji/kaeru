@@ -49,14 +49,17 @@ private slots:
         req.expiration = ExpirationPolicy::Duration;
         req.createdAt = QDateTime::currentDateTimeUtc();
         req.durationMs = 500;
+        req.reason = QStringLiteral("Keep awake (test)");
         const QUuid id = c.addRequest(req);
         QTRY_COMPARE(c.effectiveState(QDateTime::currentDateTimeUtc()).status,
                      EffectiveStatus::Active);
 
         bool expiredFired = false;
+        InhibitionRequest expiredPayload;
         connect(&c, &InhibitionCoordinator::expired,
-                [&expiredFired, &id](const QUuid& r, const InhibitionRequest&) {
+                [&expiredFired, &expiredPayload, &id](const QUuid& r, const InhibitionRequest& request) {
                     expiredFired = (r == id);
+                    expiredPayload = request;
                 });
 
         // Before expiry the request is still held.
@@ -65,11 +68,15 @@ private slots:
                  EffectiveStatus::Active);
         QCOMPARE(expiredFired, false);
 
-        // At expiry the binding is released (async activation has settled).
+        // At expiry the binding is released (async activation has settled) and
+        // the signal carries the request details, not an empty placeholder.
         c.tick(QDateTime::currentDateTimeUtc().addMSecs(600));
         QTRY_COMPARE(c.effectiveState(QDateTime::currentDateTimeUtc()).status,
                      EffectiveStatus::Inactive);
         QCOMPARE(expiredFired, true);
+        QCOMPARE(expiredPayload.id, id);
+        QCOMPARE(expiredPayload.reason, QStringLiteral("Keep awake (test)"));
+        QCOMPARE(expiredPayload.expiration, ExpirationPolicy::Duration);
         QCOMPARE(backend.acquiredIds().isEmpty(), true);
     }
 

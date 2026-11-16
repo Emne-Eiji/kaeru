@@ -33,10 +33,13 @@ Application::Application(bool backgroundMode, QObject* parent)
     QDir().mkpath(Paths::dataDir());
     QDir().mkpath(Paths::cacheDir());
 
-    // Settings → module switches
-    m_state.setModuleEnabled(Module::KeepAwake, m_settings->moduleEnabled(Module::KeepAwake));
-    m_state.setModuleEnabled(Module::Focus, m_settings->moduleEnabled(Module::Focus));
-    m_state.setModuleEnabled(Module::WorkLog, m_settings->moduleEnabled(Module::WorkLog));
+    // Initial 0.2.0 release: Keep Awake is the sole user-facing feature and
+    // is always available (the GUI no longer exposes module switches). Focus
+    // and Work Log are deferred: their core/source/tests and stored data stay
+    // intact, but they are not started or recovered in this release.
+    m_state.setModuleEnabled(Module::KeepAwake, true);
+    m_state.setModuleEnabled(Module::Focus, false);
+    m_state.setModuleEnabled(Module::WorkLog, false);
 
     m_focus = new FocusController(&m_timers, this);
     applyFocusSettingsFromSettings();
@@ -142,10 +145,13 @@ Application::Application(bool backgroundMode, QObject* parent)
     m_capabilities.update(QStringLiteral("idle-detection"), {
         QStringLiteral("idle-detection"), QStringLiteral("Idle detection (input activity)"),
         QStringLiteral("unavailable"), QString(),
-        QStringLiteral("out of scope for 1.0; manual tracking is unaffected") });
+        QStringLiteral("not part of Kaeru 0.2.0; Keep Awake does not require it") });
 
-    // Timer completions (countdown expiry for keep awake; focus handled by controller)
-    connect(&m_timers, &TimerEngine::completed, this, &Application::onTimerCompleted);
+    // Timer completions are consumed by FocusController. Keep Awake expiry is
+    // driven by the coordinator registry (wall-clock deadline), which emits
+    // the request payload once and refuses to stack stale timers.
+    connect(&m_inhibition, &InhibitionCoordinator::expired,
+        this, &Application::onKeepAwakeExpired);
 
     startTickTimer();
 }
@@ -168,10 +174,13 @@ void Application::setupStorage()
     m_work = std::make_unique<WorkSessionManager>(m_sessions.get(), m_projects.get(), this);
     m_work->setSettings(m_settings.get());
 
-    // Conservative recovery of interrupted sessions (never invents work).
-    const WorkSessionManager::RecoveryOutcome recovery = m_work->recoverInterrupted();
-    for (const QString& note : recovery.notes)
-        m_recoveryNotes << note;
+    // Conservative recovery of interrupted sessions, only while the deferred
+    // Work Log module is explicitly active (never touch history otherwise).
+    if (m_state.isModuleEnabled(Module::WorkLog)) {
+        const WorkSessionManager::RecoveryOutcome recovery = m_work->recoverInterrupted();
+        for (const QString& note : recovery.notes)
+            m_recoveryNotes << note;
+    }
 
     m_capabilities.update(QStringLiteral("work-log-storage"), {
         QStringLiteral("work-log-storage"), QStringLiteral("Work Log storage (SQLite)"),
@@ -233,13 +242,13 @@ void Application::onTick()
         m_work->tick(); // 60 s recovery checkpoints while recording
 }
 
-void Application::onTimerCompleted(const QString& id, const QString& label)
+void Application::onKeepAwakeExpired(const QUuid& requestId, const InhibitionRequest& request)
 {
-    Q_UNUSED(id)
-    // Countdown completions here are keep-awake timers created via awakeUntil
-    // / indefinite helpers. Focus intervals are completed via FocusController.
-    if (label.startsWith(QStringLiteral("Keep awake")))
-        emit keepAwakeExpired(label);
+    Q_UNUSED(request)
+    if (!m_manualAwake.isActive() || m_manualAwake.requestId() != requestId)
+        return;
+    m_manualAwake.stop();
+    emit keepAwakeExpired(tr("Your Keep Awake time has ended. The computer may sleep again."));
 }
 
 void Application::onPrepareForSleep(bool start)
@@ -263,63 +272,62 @@ void Application::onLockChanged(bool locked)
         m_work->onLockChanged(locked);
 }
 
-void Application::awakeOn(qint64 durationMs, const QString& mode)
+QUuid Application::beginManualAwake(const InhibitionRequest& request)
 {
     if (!m_state.isModuleEnabled(Module::KeepAwake))
+        return QUuid();
+    // A new explicit request is itself the user's resume action: clear any
+    // previous "turned off" suppression before starting.
+    if (m_inhibition.suppressed())
+        m_inhibition.resumeAutomatic();
+
+    // Single manual session: add the replacement first (the binding can stay
+    // covered), then drop the previous request. This prevents a release /
+    // re-acquire gap and guarantees the newest duration wins.
+    const QUuid previous = m_manualAwake.requestId();
+    const QUuid id = m_manualAwake.start(request);
+    if (id.isNull())
+        return QUuid();
+    m_inhibition.addRequest(m_manualAwake.request());
+    if (!previous.isNull())
+        m_inhibition.removeRequest(previous);
+    return id;
+}
+
+void Application::awakeOn(qint64 durationMs, const QString& mode)
+{
+    if (durationMs <= 0) {
+        awakeIndefinite(QString());
         return;
-    InhibitionRequest r;
-    r.source = RequestSource::Countdown;
-    r.reason = QStringLiteral("Keep awake (timed)");
-    r.priority = 10;
-    if (durationMs > 0) {
-        r.expiration = ExpirationPolicy::Duration;
-        r.durationMs = durationMs;
     }
-    if (mode == QStringLiteral("system"))
-        r.capabilities = Capability::SystemSleep;
-    else if (mode == QStringLiteral("display"))
-        r.capabilities = Capability::SessionIdle;
-    else
-        r.capabilities = Capability::SystemSleep | Capability::SessionIdle;
-    m_inhibition.addRequest(r);
+    beginManualAwake(ManualAwakeSession::timedRequest(durationMs, mode));
 }
 
 void Application::awakeOff()
 {
     // "Turn off Keep Awake now": stop protection immediately and suppress
-    // automatic reactivation until the user resumes (spec §6.2).
-    m_inhibition.suppressAll(QStringLiteral("turned off manually; use 'awake on' or Resume to re-enable"));
+    // automatic reactivation until the user starts a new request (spec §6.2).
+    m_manualAwake.stop();
+    m_inhibition.suppressAll(QStringLiteral("turned off manually; choose a duration to start again"));
 }
 
 void Application::awakeIndefinite(const QString& reason)
 {
-    if (!m_state.isModuleEnabled(Module::KeepAwake))
-        return;
-    InhibitionRequest r;
-    r.source = RequestSource::Manual;
-    r.reason = reason.isEmpty() ? QStringLiteral("Keep awake (indefinite)") : reason;
-    r.priority = 10;
-    r.expiration = ExpirationPolicy::None;
-    r.capabilities = Capability::SystemSleep | Capability::SessionIdle;
-    m_inhibition.addRequest(r);
+    beginManualAwake(ManualAwakeSession::indefiniteRequest(QStringLiteral("both"), reason));
 }
 
 void Application::awakeUntil(const QDateTime& localUntil, const QString& reason)
 {
-    if (!m_state.isModuleEnabled(Module::KeepAwake) || !localUntil.isValid())
+    if (!localUntil.isValid())
         return;
-    InhibitionRequest r;
-    r.source = RequestSource::Manual;
-    r.reason = reason.isEmpty() ? QStringLiteral("Keep awake (until %1)").arg(localUntil.toLocalTime().toString(QStringLiteral("HH:mm"))) : reason;
-    r.priority = 10;
-    r.expiration = ExpirationPolicy::UntilTime;
-    r.until = localUntil.toUTC();
-    r.capabilities = Capability::SystemSleep | Capability::SessionIdle;
-    m_inhibition.addRequest(r);
+    beginManualAwake(ManualAwakeSession::untilRequest(localUntil.toUTC(),
+        QStringLiteral("both"), reason));
 }
 
 void Application::releaseKeepAwake(const QUuid& requestId)
 {
+    if (m_manualAwake.isActive() && m_manualAwake.requestId() == requestId)
+        m_manualAwake.stop();
     m_inhibition.removeRequest(requestId);
 }
 
@@ -331,6 +339,7 @@ void Application::resumeAutomaticRules()
 void Application::pauseAll()
 {
     m_state.setPausedAll(true);
+    m_manualAwake.stop();
     if (m_focus)
         m_focus->stop();
     m_inhibition.releaseAll();
@@ -392,6 +401,7 @@ void Application::prepareQuit()
 {
     // Quit stops recording (close segment + session — graceful shutdown, so
     // no recovery is needed on next start) and releases every owned inhibitor.
+    m_manualAwake.stop();
     if (m_work)
         m_work->stop(nullptr);
     if (m_focus)
