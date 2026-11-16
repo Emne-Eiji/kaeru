@@ -5,6 +5,7 @@
 #include "app/CommandRouter.h"
 #include "app/WorkSessionManager.h"
 #include "core/Duration.h"
+#include "core/TrayState.h"
 
 #include <QApplication>
 #include <QHBoxLayout>
@@ -141,20 +142,46 @@ void TrayController::updateIcon()
 {
     if (!m_tray || !m_available)
         return;
-    const EffectiveAwakeState state = m_window->app()->awakeState();
+    Application* app = m_window->app();
+    const EffectiveAwakeState state = app->awakeState();
+    const FocusController* focus = app->focus();
+    const bool focusActive = focus
+        && (focus->phase() == FocusController::Phase::Work
+            || focus->phase() == FocusController::Phase::ShortBreak
+            || focus->phase() == FocusController::Phase::LongBreak);
+
+    // Official frog identity: Awake (protection held), Focused (focus running),
+    // Sleep (Kaeru inactive). Precedence + honest tooltip per ADR-008.
+    const TrayPresentation tp = decideTrayPresentation(
+        state.status, focusActive, app->appState()->isPausedAll(),
+        state.errorDetail, state.limitation);
+
     IconState icon = IconState::Inactive;
-    switch (state.status) {
-    case EffectiveStatus::Active: icon = IconState::Awake; break;
-    case EffectiveStatus::PartiallyActive: icon = IconState::Awake; break;
-    case EffectiveStatus::Activating: icon = IconState::Paused; break;
-    case EffectiveStatus::Failed:
-    case EffectiveStatus::PermissionDenied: icon = IconState::Error; break;
+    switch (tp.icon) {
+    case TrayPresentation::Icon::Awake: icon = IconState::Awake; break;
+    case TrayPresentation::Icon::Focused: icon = IconState::Focus; break;
+    case TrayPresentation::Icon::Sleep:
     default: icon = IconState::Inactive; break;
     }
-    m_tray->setIcon(Icons::stateIcon(icon));
-    QString tooltip = tr("Kaeru — %1").arg(effectiveStatusName(state.status));
-    if (!state.reason.isEmpty())
+
+    QString tooltip = tr("Kaeru — %1").arg(tp.summary);
+    if (!state.reason.isEmpty() && (tp.keepAwakeActive || tp.keepAwakePartial))
         tooltip += QStringLiteral(" · %1").arg(state.reason);
+    if (tp.keepAwakePartial && !tp.detail.isEmpty())
+        tooltip += QStringLiteral(" · %1").arg(tp.detail);
+    if (tp.focusActive) {
+        tooltip += QStringLiteral(" · %1").arg(focus->phaseLabel());
+        if (focus->remainingMs() >= 0)
+            tooltip += QStringLiteral(" (%1 left)")
+                .arg(formatRemainingMs(focus->remainingMs()));
+    }
+    if (app->storageReady() && app->work() && app->work()->isActive())
+        tooltip += tr("\nRecording work · today %1")
+            .arg(formatRemainingMs(app->work()->todayWorkMs()));
+    if (tp.error && !tp.detail.isEmpty())
+        tooltip += QStringLiteral("\n%1").arg(tp.detail);
+
+    m_tray->setIcon(Icons::stateIcon(icon));
     m_tray->setToolTip(tooltip);
     updateFallback();
 }

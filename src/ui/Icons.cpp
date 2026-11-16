@@ -1,3 +1,6 @@
+// Kaeru — icon access (official frog identity, ADR-008)
+// The three frog expressions are the Kaeru visual identity (original artwork
+// supplied by Emne, GPL-3.0-or-later with the project; see docs/icon-assets.md).
 #include "Icons.h"
 
 #include <QFile>
@@ -7,32 +10,37 @@ namespace kaeru {
 static const char* stateFile(IconState s)
 {
     switch (s) {
-    case IconState::Inactive: return ":/icons/kaeru.svg";
-    case IconState::Awake: return ":/icons/kaeru-awake.svg";
-    case IconState::Focus: return ":/icons/kaeru-focus.svg";
-    case IconState::Recording: return ":/icons/kaeru-record.svg";
-    case IconState::Paused: return ":/icons/kaeru-paused.svg";
-    case IconState::Error: return ":/icons/kaeru-error.svg";
+    case IconState::Awake: return ":/icons/frog/awake.svg";
+    case IconState::Focus: return ":/icons/frog/focused.svg";
+    case IconState::Inactive:
+    case IconState::Recording:
+    case IconState::Paused:
+    case IconState::Error:
+    default:
+        // Recording/paused/error all present as the inactive frog; the
+        // tooltip (not the icon) carries the precise state (ADR-008).
+        return ":/icons/frog/sleep.svg";
     }
-    return ":/icons/kaeru.svg";
 }
 
 QString Icons::stateIconName(IconState state)
 {
     switch (state) {
-    case IconState::Inactive: return QStringLiteral("io.github.kaeru.Kaeru");
     case IconState::Awake: return QStringLiteral("io.github.kaeru.Kaeru.awake");
-    case IconState::Focus: return QStringLiteral("io.github.kaeru.Kaeru.focus");
-    case IconState::Recording: return QStringLiteral("io.github.kaeru.Kaeru.record");
-    case IconState::Paused: return QStringLiteral("io.github.kaeru.Kaeru.paused");
-    case IconState::Error: return QStringLiteral("io.github.kaeru.Kaeru.error");
+    case IconState::Focus: return QStringLiteral("io.github.kaeru.Kaeru.focused");
+    case IconState::Inactive:
+    case IconState::Recording:
+    case IconState::Paused:
+    case IconState::Error:
+    default:
+        return QStringLiteral("io.github.kaeru.Kaeru.sleep");
     }
-    return QStringLiteral("io.github.kaeru.Kaeru");
 }
 
 QIcon Icons::appIcon()
 {
-    return QIcon(QStringLiteral(":/icons/kaeru.svg"));
+    // Brand/launcher icon: the awake expression (recognizable, eyes open).
+    return QIcon(QStringLiteral(":/icons/frog/awake.svg"));
 }
 
 QIcon Icons::stateIcon(IconState state)

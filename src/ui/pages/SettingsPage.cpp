@@ -3,6 +3,7 @@
 #include "app/Paths.h"
 #include "app/Settings.h"
 #include "platform/AutostartBackend.h"
+#include "ui/Icons.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -128,13 +129,19 @@ SettingsPage::SettingsPage(Application* app, QWidget* parent)
     // ---- About ----
     QWidget* aboutCard = sectionCard(tr("About"));
     cardLayout = qobject_cast<QVBoxLayout*>(aboutCard->layout());
+    auto* aboutRow = new QHBoxLayout();
+    auto* aboutIcon = new QLabel(aboutCard);
+    aboutIcon->setPixmap(Icons::appIcon().pixmap(48, 48));
+    aboutRow->addWidget(aboutIcon);
     auto* aboutLabel = new QLabel(
         tr("Kaeru %1 — GPL-3.0-or-later.\nLocal-first keep awake, focus and work log. "
            "No telemetry; private fields (tasks/tags/notes) are never logged.")
             .arg(QStringLiteral(KAERU_VERSION)),
         aboutCard);
     aboutLabel->setWordWrap(true);
-    cardLayout->addWidget(aboutLabel);
+    aboutRow->addWidget(aboutLabel, 1);
+    aboutRow->addStretch(1);
+    cardLayout->addLayout(aboutRow);
     root->addWidget(aboutCard);
 
     root->addStretch(1);

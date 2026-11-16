@@ -89,13 +89,12 @@ add_library(kaeru_ui STATIC
 target_link_libraries(kaeru_ui PUBLIC Qt6::Widgets Qt6::Gui kaeru_app)
 
 # ---- main executable ----
-qt_add_resources(kaeru_ui RESOURCES_PREFIX "/" PREFIX "/" FILES
-  resources/icons/kaeru.svg
-  resources/icons/kaeru-awake.svg
-  resources/icons/kaeru-focus.svg
-  resources/icons/kaeru-record.svg
-  resources/icons/kaeru-paused.svg
-  resources/icons/kaeru-error.svg
+# BASE + PREFIX make the resource paths :/icons/frog/*.svg (see Icons.cpp).
+qt_add_resources(kaeru_ui RESOURCES_PREFIX "/" PREFIX "/" BASE resources
+  FILES
+  resources/icons/frog/awake.svg
+  resources/icons/frog/focused.svg
+  resources/icons/frog/sleep.svg
 )
 
 add_executable(kaeru src/app/main.cpp)
@@ -103,7 +102,7 @@ target_link_libraries(kaeru PRIVATE kaeru_ui Qt6::Widgets)
 
 # ---- unit tests ----
 enable_testing()
-foreach(t IN ITEMS clocks registry coordinator timerengine focus worklog storage csv cliparser notify workmanager reports)
+foreach(t IN ITEMS clocks registry coordinator timerengine focus worklog storage csv cliparser notify workmanager reports traystate)
   add_executable(test_${t} tests/unit/test_${t}.cpp)
   target_link_libraries(test_${t} PRIVATE kaeru_app kaeru_ui Qt6::Test)
   add_test(NAME test_${t} COMMAND test_${t})
@@ -113,7 +112,25 @@ endforeach()
 
 install(TARGETS kaeru RUNTIME DESTINATION bin)
 install(FILES resources/io.github.kaeru.Kaeru.desktop DESTINATION share/applications RENAME io.github.kaeru.Kaeru.desktop)
-install(FILES resources/icons/kaeru.svg DESTINATION share/icons/hicolor/scalable/apps RENAME io.github.kaeru.Kaeru.svg)
 install(FILES resources/io.github.kaeru.Kaeru.metainfo.xml DESTINATION share/metainfo RENAME io.github.kaeru.Kaeru.metainfo.xml)
 install(FILES README.md DESTINATION share/doc/kaeru)
 install(FILES LICENSE DESTINATION share/doc/kaeru)
+
+# Official frog icon identity (ADR-008): scalable SVGs + raster fallbacks
+# for panels that lack SVG support.
+install(FILES resources/icons/frog/awake.svg
+  DESTINATION share/icons/hicolor/scalable/apps
+  RENAME io.github.kaeru.Kaeru.svg)
+install(FILES resources/icons/frog/focused.svg
+  DESTINATION share/icons/hicolor/scalable/apps
+  RENAME io.github.kaeru.Kaeru.focused.svg)
+install(FILES resources/icons/frog/sleep.svg
+  DESTINATION share/icons/hicolor/scalable/apps
+  RENAME io.github.kaeru.Kaeru.sleep.svg)
+foreach(px 16 24 32 48 64 128 256)
+  foreach(state awake focused sleep)
+    install(FILES resources/icons/frog/png/${state}-${px}.png
+      DESTINATION share/icons/hicolor/${px}x${px}/apps
+      RENAME io.github.kaeru.Kaeru-${state}.png)
+  endforeach()
+endforeach()
