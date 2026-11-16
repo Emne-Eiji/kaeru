@@ -24,12 +24,18 @@ cmake --build build -j"$(nproc)"
 ctest --test-dir build --output-on-failure
 ```
 
-## Install (package)
+## Install
 
-```bash
-dpkg-buildpackage -us -uc
-sudo apt install ../kaeru_<version>_amd64.deb
-```
+**From the staged tarball (available now):** `dist/kaeru-0.1.1-Linux-amd64.tar.gz`
+(verify with `sha256sum -c`), then install the `kaeru-0.1.1/` tree into
+`/usr` or `~/.local` (binary → `bin/`, data → `share/`). Runtime deps:
+`libqt6sql6-sqlite`, a notification daemon, logind and a desktop portal
+(standard on GNOME).
+
+**Debian package:** `debian/` packaging via debhelper is the final delivery
+step; it requires `sudo apt install -y debhelper lintian devscripts` first
+(see `docs/delivery-report.md` §6 for status). Once available:
+`dpkg-buildpackage -us -uc && sudo apt install ../kaeru_0.1.1_amd64.deb`.
 
 Run `kaeru` from your applications menu, or `kaeru --help` for CLI control.
 

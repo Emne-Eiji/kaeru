@@ -10,3 +10,5 @@ moc_*.cpp
 /tmp-evidence/
 *.log
 !docs/**/*.log
+# Release artifacts (regenerated; not committed)
+dist/

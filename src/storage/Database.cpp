@@ -3,6 +3,7 @@
 #include "app/Paths.h"
 
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -64,6 +65,9 @@ bool Database::open(QString* error)
     q.exec(QStringLiteral("PRAGMA foreign_keys=ON"));
     q.exec(QStringLiteral("PRAGMA busy_timeout=5000"));
     q.exec(QStringLiteral("PRAGMA synchronous=NORMAL"));
+    // User-only permissions for private data (spec §10 security).
+    QFile::setPermissions(m_filePath,
+                          QFileDevice::ReadOwner | QFileDevice::WriteOwner);
     return true;
 }
 

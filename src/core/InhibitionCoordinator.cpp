@@ -215,7 +215,6 @@ void InhibitionCoordinator::onBindingLost(const QString& bindingId, const QStrin
     auto it = m_bindings.find(bindingId);
     if (it == m_bindings.end())
         return;
-    const Capabilities caps = it->capabilities;
     m_bindings.erase(it);
     // Re-resolve to re-acquire after backend loss (restart resilience).
     Q_UNUSED(reason)

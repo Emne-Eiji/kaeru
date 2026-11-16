@@ -10,6 +10,7 @@ FakeInhibitionBackend::FakeInhibitionBackend(QObject* parent)
 QString FakeInhibitionBackend::acquire(Capabilities caps, const QString& reason)
 {
     Q_UNUSED(reason)
+    Q_UNUSED(caps)
     const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
     if (m_failCounter > 0) {
         --m_failCounter;

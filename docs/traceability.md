@@ -16,8 +16,8 @@ Status vocabulary: `implemented`, `tested` (with evidence), `partial`, `unavaila
 | KAE-REPORT-001 | Reports, filters, CSV (§6.4) | architecture.md | ReportsPage, CsvExport, SessionRepository totals | test_reports, test_csv; native CLI export docs/evidence-wp06.md | tested |
 | KAE-PRIV-001 | Local-first privacy, no telemetry (§2/§10) | privacy.md | no network code | audit: no sockets; privacy.md | enforced |
 | KAE-PKG-001 | Maintainable .deb + lifecycle tests (§13) | testing.md §4 | debian/* | packaging tests WP-03/07 | WP-03/07 |
-| KAE-TEST-001 | Honest unit/integration/packaging evidence (§14) | testing.md | tests/* | docs/testing evidence records | all |
-| KAE-REL-001 | v1.0 release gate (§14) | testing.md §release gate | — | final regression WP-07 | WP-07 |
+| KAE-TEST-001 | Honest unit/integration/packaging evidence (§14) | testing.md | tests/* | 12 Qt Test suites (12/12 pass, zero warnings); native evidence docs/evidence-wp02..06.md; packaging evidence pending toolchain (docs/delivery-report.md) | tested (packaging partial) |
+| KAE-REL-001 | v1.0 release gate (§14) | testing.md §release gate | — | clean Release build, 12/12 tests, staged tarball + checksums (dist/); `.deb` blocked on missing toolchain — see delivery report | partial (release candidate ready) |
 
 ## Open decisions register
 

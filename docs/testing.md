@@ -6,17 +6,22 @@
 
 | Suite | Covers |
 |---|---|
-| test_clocks | monotonic vs boot vs wall semantics; fake clocks; suspend simulation by advancing fake clocks |
-| test_registry | overlap/expiry, suppression, module disable cleanup, precedence order, priorities |
-| test_coordinator | capability union/diff, acquire/release wiring against fake backend, backend loss/denial/failure → requested vs effective state |
-| test_timerengine | countdown expiry (boot), stopwatch suspend pause (monotonic), wall-deadline recompute under TZ/DST/clock changes, fires-once guarantee |
-| test_focus | Pomodoro transitions, extend/skip, auto-next off by default, keep-awake linkage, focus→worklog accrual excluding suspend |
-| test_worklog | one active session, project switch transaction, suspend/lock pause, segment math, revisions/provenance, crash recovery from checkpoints (no invented time) |
-| test_storage | migrations v1 (+v2 forward), constraints (unique active session, non-negative durations, FK), WAL, backup-before-migration |
-| test_csv | escaping (quotes/commas/newlines), formula injection neutralization (=,+,−,@,tab,CR prefixes) |
-| test_cliparser | grammar, malformed values rejected, defaults, exit-code mapping |
+| test_clocks | monotonic vs boot vs wall semantics; fake clocks; suspend simulation by advancing fake clocks; duration/date parsing (accept + reject) |
+| test_registry | add/remove/expire (duration + until), earliestRemaining, priority reasons, clear + changed signal |
+| test_coordinator | capability union/diff, acquire/release against fake backend, backend loss/denial/failure, suppression, module disable, Pause All (no auto-restart), requested≠effective |
+| test_timerengine | countdown expiry (boot), stopwatch suspend pause (monotonic), wall-deadline, fires-once, cancel, invalid inputs |
+| test_focus | Pomodoro transitions, pause freeze/resume (regression), skip/extend, upcoming-work override, stop cancels, quiet-hours windows |
+| test_notify | notification policy decisions (notify option, quiet hours, keep-awake expiry gate) |
+| test_worklog | open-segment policy, paused exclusion, no-overlap, single active session, checkpoints never counted, focus sessions separate, daily totals offset |
+| test_workmanager | work lifecycle, idempotent start, transactional project switch, suspend/lock boundaries, conservative recovery (with + without checkpoint), focus→focus_sessions |
+| test_storage | migrations versioned/idempotent, project CRUD + guards, session round-trip, FK integrity, backup-before-migration, WAL + integrity |
+| test_csv | quoting, formula-injection neutralization (=,+,-,@,tab,CR), header + open-segment rows, write/truncate + row count, filename convention |
+| test_reports | per-project totals, focus totals, open segments never count |
+| test_cliparser | grammar, malformed values rejected, defaults, missing operands |
 
-Run: `ctest` / each test binary with `QT_QPA_PLATFORM=offscreen` and `KAERU_TEST_HOME` sandbox.
+Run: `ctest --test-dir build` (offscreen + `KAERU_TEST_HOME` sandbox set by
+the suite itself; no user data touched). 12/12 suites pass on the clean
+Release build.
 
 ## 2. Integration tests (real desktop, primary environment)
 

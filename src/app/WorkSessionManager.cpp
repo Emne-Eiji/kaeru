@@ -64,6 +64,7 @@ bool WorkSessionManager::start(const QString& projectName, QString* error)
 
 bool WorkSessionManager::pause(const QString& source, QString* error)
 {
+    Q_UNUSED(source) // the work segment is closed; paused duration is implicit
     SessionRecord s;
     if (!m_sessions->activeSession(&s, error))
         return false;

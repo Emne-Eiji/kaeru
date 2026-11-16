@@ -3,6 +3,7 @@
 
 #include "app/Application.h"
 #include "app/CommandRouter.h"
+#include "app/WorkSessionManager.h"
 #include "core/Duration.h"
 
 #include <QApplication>
@@ -23,6 +24,9 @@ TrayController::TrayController(MainWindow* window, QObject* parent)
     connect(window->app()->inhibition(), &InhibitionCoordinator::stateChanged,
         this, &TrayController::updateIcon);
     connect(window->app()->appState(), &AppState::changed, this, [this] { rebuildMenu(); updateIcon(); });
+    if (window->app()->work())
+        connect(window->app()->work(), &WorkSessionManager::stateChanged,
+            this, &TrayController::rebuildMenu);
 }
 
 void TrayController::ensureStarted()
@@ -107,8 +111,16 @@ void TrayController::rebuildMenu()
     focusMenu->addAction(tr("Stop"), app, [app] { CommandRouter(app).focusCommand(QStringLiteral("stop"), {}); });
 
     auto* workMenu = menu->addMenu(tr("Work Log"));
+    if (app->storageReady() && app->work()) {
+        const qint64 todayMs = app->work()->todayWorkMs();
+        auto* todayAction = workMenu->addAction(
+            tr("Today: %1").arg(formatRemainingMs(todayMs)));
+        todayAction->setEnabled(false);
+        workMenu->addSeparator();
+    }
     workMenu->addAction(tr("Start"), app, [app] { CommandRouter(app).workCommand(QStringLiteral("start"), {}); });
     workMenu->addAction(tr("Pause"), app, [app] { CommandRouter(app).workCommand(QStringLiteral("pause"), {}); });
+    workMenu->addAction(tr("Resume"), app, [app] { CommandRouter(app).workCommand(QStringLiteral("resume"), {}); });
     workMenu->addAction(tr("Stop"), app, [app] { CommandRouter(app).workCommand(QStringLiteral("stop"), {}); });
 
     menu->addSeparator();

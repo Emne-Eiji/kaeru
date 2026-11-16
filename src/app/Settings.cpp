@@ -2,6 +2,7 @@
 #include "Paths.h"
 
 #include <QDir>
+#include <QFile>
 #include <QStandardPaths>
 
 #include <cstdio>
@@ -102,6 +103,9 @@ void Settings::setKeepAwakeNotifications(bool on) { m_settings.setValue(QStringL
 void Settings::sync()
 {
     m_settings.sync();
+    // User-only permissions for private data (spec §10 security).
+    QFile::setPermissions(Paths::settingsFile(),
+                          QFileDevice::ReadOwner | QFileDevice::WriteOwner);
 }
 
 } // namespace kaeru
