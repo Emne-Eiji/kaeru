@@ -62,6 +62,8 @@ Application::Application(bool backgroundMode, QObject* parent)
             // focus_sessions (never into work-log segments — no double
             // counting) when the user enabled recording.
             if (phase == FocusController::Phase::Work && m_work
+                && m_state.isModuleEnabled(Module::Focus)
+                && m_state.isModuleEnabled(Module::WorkLog)
                 && m_settings->focusRecordInWorkLog())
                 m_work->recordFocusWork(planned, achieved, nullptr);
             emit focusIntervalFinished(phase);
@@ -158,6 +160,18 @@ Application::Application(bool backgroundMode, QObject* parent)
 
 void Application::setupStorage()
 {
+    // Work Log is deferred in 0.2.0: do not open, migrate or otherwise touch
+    // the preserved database. Diagnostics reports this honestly and the
+    // feature can be re-enabled in a later release without data loss.
+    if (!m_state.isModuleEnabled(Module::WorkLog)) {
+        m_storageReady = false;
+        m_capabilities.update(QStringLiteral("work-log-storage"), {
+            QStringLiteral("work-log-storage"), QStringLiteral("Work Log storage (SQLite)"),
+            QStringLiteral("deferred"), QString(),
+            tr("Work Log is deferred in this release; existing data is not opened or modified") });
+        return;
+    }
+
     m_db = std::make_unique<Database>();
     QString err;
     if (!m_db->open(&err) || !Migrations::apply(m_db->handle(), &err)) {
@@ -238,7 +252,9 @@ void Application::onTick()
     const QDateTime now = QDateTime::currentDateTimeUtc();
     m_timers.tick();
     m_inhibition.tick(now);
-    if (m_work)
+    // Work Log is deferred in this release: never checkpoint or otherwise
+    // mutate a session that may still exist in the preserved database.
+    if (m_work && m_state.isModuleEnabled(Module::WorkLog))
         m_work->tick(); // 60 s recovery checkpoints while recording
 }
 
@@ -254,7 +270,7 @@ void Application::onKeepAwakeExpired(const QUuid& requestId, const InhibitionReq
 void Application::onPrepareForSleep(bool start)
 {
     m_timers.onPrepareForSleep(start);
-    if (m_work)
+    if (m_work && m_state.isModuleEnabled(Module::WorkLog))
         m_work->onSuspendBoundary(start);
     if (start) {
         // Explicitly requested awake sessions may legally persist — the
@@ -268,7 +284,7 @@ void Application::onPrepareForSleep(bool start)
 
 void Application::onLockChanged(bool locked)
 {
-    if (m_work)
+    if (m_work && m_state.isModuleEnabled(Module::WorkLog))
         m_work->onLockChanged(locked);
 }
 
@@ -401,8 +417,9 @@ void Application::prepareQuit()
 {
     // Quit stops recording (close segment + session — graceful shutdown, so
     // no recovery is needed on next start) and releases every owned inhibitor.
+    // While Work Log is deferred, leave any preserved session untouched.
     m_manualAwake.stop();
-    if (m_work)
+    if (m_work && m_state.isModuleEnabled(Module::WorkLog))
         m_work->stop(nullptr);
     if (m_focus)
         m_focus->stop();
