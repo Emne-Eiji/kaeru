@@ -243,10 +243,22 @@ only to confirm no Kaeru logind inhibitor remains.
   `/tmp/opencode/final-gui-overview-crop2.png` (main GUI),
   `/tmp/opencode/theme-fix2-crop.png` and
   `/tmp/opencode/theme-dark-dialog-crop.png` (complete dark theme).
-- Theme coverage: System/Light appeared correct; selecting Dark changed the
-  sidebar, cards, central content area, inputs and modal dialog together.
-  A central-widget background gap found in the first dark screenshot was
-  fixed and re-verified in the dev build before repackaging.
+- Theme coverage on the refreshed installed package (binary md5
+  `2e966b72…`, matching `dist/0.2.0-3/kaeru_0.2.0-3_amd64.deb` SHA-256
+  `348cf18c…`): System/Light and Dark were each applied live; selecting Dark
+  changed sidebar, cards, central content area, table, inputs and modal
+  dialog together, and Light restored all of them. Screenshots:
+  `/tmp/opencode/theme-fix2-crop.png` (Dark),
+  `/tmp/opencode/theme-dark-dialog-crop.png` (Dark dialog),
+  `/tmp/opencode/final-light2-crop.png` (Light),
+  `/tmp/opencode/final-diagnostics-crop.png` (Dark table). Preference was
+  restored to System at the end.
+- About/update-check on the installed package:
+  `/tmp/opencode/final-about-crop.png` shows official artwork, 0.2.0,
+  license/acknowledgements, the official repository link and no Quit button;
+  `/tmp/opencode/final-update-check-crop.png` shows the honest result
+  “No published release is available yet. Update status is unknown.” — not a
+  false “up to date” claim.
 - Limitation — GNOME left-click: `QSystemTrayIcon::Trigger` toggles correctly
   where the platform delivers it, and a direct SNI `Activate` call toggles
   the installed app. On this GNOME 42 AppIndicator host, a physical left-click
