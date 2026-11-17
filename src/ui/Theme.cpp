@@ -115,6 +115,7 @@ QString Theme::styleSheet(bool dark) const
     QString qss = QStringLiteral(
         "QWidget { font-size: 13px; color: %text; }"
         "QMainWindow, QDialog, QMessageBox { background: %bg; }"
+        "QWidget#Central, QStackedWidget, QStackedWidget > QWidget, QScrollArea > QWidget { background: %bg; }"
         "QFrame, QScrollArea, QGroupBox { background: transparent; color: %text; }"
         "QFrame#Card { background: %card; border: 1px solid %border; border-radius: 8px; }"
         "#CardTitle { font-weight: 600; color: %text; }"

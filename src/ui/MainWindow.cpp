@@ -58,6 +58,7 @@ MainWindow::~MainWindow()
 void MainWindow::buildUi()
 {
     auto* central = new QWidget(this);
+    central->setObjectName(QStringLiteral("Central"));
     auto* layout = new QHBoxLayout(central);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);

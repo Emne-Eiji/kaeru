@@ -95,9 +95,12 @@ checkpoint: 20 executables, all passing in a clean Release build.
 - DBusMenu cannot color individual words or set per-line font sizes in the
   GNOME panel; state color is conveyed by the status dot and the exact
   ON/OFF text.
-- GNOME appindicator click routing is shell-side; left/right-click behavior
-  was verified up to the screen lock but should be re-checked after any
-  desktop update.
+- GNOME appindicator click routing is shell-side. On this GNOME 42 host a
+  physical left-click on the icon is consumed by the shell and does not
+  produce `QSystemTrayIcon::Trigger`/SNI `Activate`; the interactive status
+  item and a direct SNI `Activate` call both toggle correctly. Right-click
+  reliably opens the menu. This is documented rather than claimed as a
+  passing left-click acceptance item.
 - Update checking requires network access to api.github.com. No release has
   been published yet, so the live check is expected to report “no published
   release”, not “up to date”.

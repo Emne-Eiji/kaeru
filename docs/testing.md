@@ -225,12 +225,36 @@ only to confirm no Kaeru logind inhibitor remains.
   dot after a tray left-click activation. Right-click opened the same compact
   menu without changing state. The menu contained `Custom…` immediately below
   `Indefinitely` and no `Turn off Kaeru` action.
+- Installed 0.2.0-3 verification (binary md5 `44000dc6…`, matching the staged
+  package): right-click opened the compact menu without changing state;
+  the exported status item showed `Kaeru: OFF\nInactive` (red dot) and
+  `Kaeru: ON\nIndefinite` (green dot); the expanded submenu showed
+  `Custom…` below `Indefinitely` and no `Turn off Kaeru` action. Clicking the
+  status item over DBusMenu toggled active → inactive → active with real
+  portal inhibition. Selecting 15 minutes and then 2 hours while active
+  restarted the timer (≈15 m, then ≈2 h); `Custom…` produced 1 h 30 m and
+  saved `custom:5400000`. After restarting Kaeru, that custom choice remained
+  and an SNI `Activate` call started a fresh 1 h 30 m session.
 - Screenshot evidence (throwaway paths):
-  `/tmp/opencode/wp0809-menu-off-crop.png` (OFF),
-  `/tmp/opencode/wp0809-menu-on2-crop.png` (ON with remaining time). The GNOME
-  screen locked before the second left-click OFF transition and full GUI
-  theme screenshot pass could be completed; those items remain **implemented
-  but not fully verified in the real session**.
+  `/tmp/opencode/final-menu-off2-crop.png` (installed OFF),
+  `/tmp/opencode/final-menu-on-crop.png` (installed ON),
+  `/tmp/opencode/final-submenu-kbd-crop.png` (expanded submenu),
+  `/tmp/opencode/final-custom-dialog-crop.png` (custom dialog),
+  `/tmp/opencode/final-gui-overview-crop2.png` (main GUI),
+  `/tmp/opencode/theme-fix2-crop.png` and
+  `/tmp/opencode/theme-dark-dialog-crop.png` (complete dark theme).
+- Theme coverage: System/Light appeared correct; selecting Dark changed the
+  sidebar, cards, central content area, inputs and modal dialog together.
+  A central-widget background gap found in the first dark screenshot was
+  fixed and re-verified in the dev build before repackaging.
+- Limitation — GNOME left-click: `QSystemTrayIcon::Trigger` toggles correctly
+  where the platform delivers it, and a direct SNI `Activate` call toggles
+  the installed app. On this GNOME 42 AppIndicator host, a physical left-click
+  on the icon is consumed by the shell (no SNI method call observed) and does
+  not toggle; right-click opens the menu. This is a shell integration
+  limitation; the interactive status item and duration menu remain fully
+  functional. The exact status-item click is the recommended toggle path on
+  this host.
 - Limitation: DBusMenu labels are plain text, so individual-word colors and
   per-line font sizes cannot be expressed in the GNOME panel. The status dot
   is green/red and the text is exact; Qt-hosted menus use rich text.
