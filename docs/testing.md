@@ -73,6 +73,46 @@ at ≈(313,378) in the 1200×800 harness).
 Screenshots from the session are in `/tmp/opencode/` (throwaway, not
 committed). The delivery report records the exact observed status values.
 
+## 2a. Tray menu status/action correction (post-0.2.0, 2026-11-17)
+
+The tray menu was tested as an actual menu, not just as tooltip/pixmap
+properties:
+
+- **SNI path:** the running app registered with the session
+  `org.kde.StatusNotifierWatcher`. The exported menu was read from the
+  item's `/MenuBar` object over `com.canonical.dbusmenu` (labels, enabled
+  flags, separators), actions were triggered through DBusMenu `Event`, and
+  the menu was also opened on the real GNOME panel with right-click for
+  screenshots.
+- **XEmbed path:** `stalonetray` in Xephyr hosted the same
+  `QSystemTrayIcon`; the local Qt menu was opened with right-click and driven
+  with `xdotool` (mouse and Down/Right/Return). This verifies the actual
+  rendered labels and enabled states, not only exported properties.
+- **Failure/denial path:** an isolated session/system bus ran a fake
+  `org.kde.StatusNotifierWatcher` and fake
+  `org.freedesktop.portal.Desktop`. The fake portal delayed its
+  `org.freedesktop.portal.Request.Response` and then returned code 1
+  (denied); logind could not rescue the request because the system bus was
+  isolated too. This exercises the real coordinator, tray state mapping and
+  menu export with a simulated backend (clearly not native portal evidence).
+
+| Workflow | Expected | Actual | Result |
+|---|---|---|---|
+| Initial state | `Kaeru: OFF`, status readable (not grey), `Turn off Kaeru` disabled | exact match; status action enabled | pass |
+| Tray → 15 minutes | `ACTIVATING…` until confirmed, off disabled | `Kaeru: ACTIVATING…`, off disabled | pass |
+| Activation confirmed | `Kaeru: ON`, off enabled, without reopening the menu | exact match | pass |
+| Click `Turn off Kaeru` | real inhibition released; `Kaeru: OFF`; off disabled | status inactive, no bindings, off disabled | pass |
+| Main GUI → 15 minutes | tray menu changes to ON without reopen/restart | exact match (menu screenshot) | pass |
+| Tray → 2 hours while GUI open | GUI updates to ~1 h 59 m; one request, no stack | GUI showed `1h 59m`; two capability bindings (sleep + idle), not duplicate requests | pass |
+| 5 s timed request expiry | status returns to OFF and off disabled | exact match after expiry; no binding left | pass |
+| Indefinitely → off | ON while held, OFF after manual deactivation | exact match | pass |
+| Denied activation | `Kaeru: ERROR`, never ON; off disabled | exact match; tooltip carried the denial detail | pass |
+| Failure (`Failed`) | `Kaeru: ERROR`, never ON; off disabled | covered by `test_traystate` mapping and coordinator failure tests | pass (unit) |
+
+The exact labels were also asserted in `test_traystate`:
+`Kaeru: OFF`, `Kaeru: ON`, `Kaeru: ACTIVATING…` and `Kaeru: ERROR`, with
+the off action enabled only for `Active`/`PartiallyActive`.
+
 ## 3. Deferred-module read-only verification (0.2.0)
 
 - Pre-seed a sandbox database with a marker row, record its SHA-256.
@@ -95,6 +135,7 @@ committed). The delivery report records the exact observed status values.
 | Single instance | second launch | forwards to the running instance (0.1.1 evidence; unchanged path) |
 | Autostart toggle | Settings → Startup | file created/removed; exact Exec verified |
 | Tray presence | SNI property query | registered item, tooltip, pixmaps |
+| Tray menu content/actions | DBusMenu labels/enabled flags + `Event`; XEmbed menu clicks | `Kaeru: OFF/ON/ACTIVATING…/ERROR`, off action gated on confirmed activation; see §2a |
 | CLI/IPC | all 0.2.0 verbs | meaningful output/exit codes; deferred commands report not available |
 | Real suspend/resume | **manual only** | not run; user session protection |
 | Audible notification | **manual only** | not observed |
@@ -128,8 +169,9 @@ only to confirm no Kaeru logind inhibitor remains.
 1. Real suspend/resume not auto-triggered — manual procedure only.
 2. Ubuntu 24.04 native validation not performed (no machine).
 3. Wayland/KDE not evaluated.
-4. Tray menu cannot be fully script-driven; evidence = SNI properties,
-   tooltips, pixmaps and screenshots.
+4. Tray menu *content/actions* are verified through DBusMenu and the
+   XEmbed-rendered Qt menu; a specific panel's theme, icon scaling and
+   placement remain desktop-side and are not asserted.
 5. DST machine-clock change not performed; validated via TZ injection.
 6. Root package lifecycle tests blocked by sudo password.
 7. Audible notification playback is daemon-side and was not observed.

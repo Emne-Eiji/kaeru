@@ -13,6 +13,7 @@
 | C | Focus Timer design rejected | **Deferred**: removed from GUI/CLI; source, tests and data retained; no redesign attempted | §C below |
 | D | Work Log records work prematurely | **Deferred and made read-only**: removed from GUI/CLI; the preserved database is not opened or written | §D below |
 | E | Focused icon is broken | **Fixed for runtime rendering**: embedded PNG variants replace SVG rendering | §E below |
+| F | Tray always shows `Keep Awake: inactive`; “Turn off” permanently disabled | **Fixed and tray-menu-verified**: live coordinator state refreshes menu + action; tray labels shortened to `Kaeru` | §F below |
 
 ## Issue A — Two Debian packages (debug symbols)
 
@@ -128,6 +129,65 @@ PNG variants rasterize correctly.
 desktop configuration (SNI properties and embedded pixmaps were verified;
 the panel’s own desaturation/theme behavior is desktop-side).
 
+## Issue F — Tray status stale, turn-off action disabled **FIXED**
+
+**Report:** the tray menu always showed `Keep Awake: inactive` (grey), and
+`Turn off Keep Awake now` was permanently unavailable even while Keep Awake
+was confirmed active.
+
+**Root causes (confirmed):**
+
+1. The menu was rebuilt only on `AppState::changed` and when the tray was
+   first created. `InhibitionCoordinator::stateChanged` — the signal emitted
+   after activation, release, expiry, failure and denial — was wired only to
+   `updateIcon()`. The icon/tooltip therefore changed while the already-built
+   menu text and action enablement stayed frozen at the initial OFF state.
+2. The off action was created once with
+   `state.status != EffectiveStatus::Inactive`. From the initial OFF state it
+   was permanently disabled. The condition was also too broad: a fresh build
+   would have enabled it during `Activating`, `Unsupported`, `Failed` and
+   `PermissionDenied` instead of only when inhibition was confirmed.
+3. The action itself was not broken: it already called
+   `Application::awakeOff()` → `ManualAwakeSession::stop()` +
+   `InhibitionCoordinator::suppressAll()`. The defect was entirely the stale
+   menu/enablement path.
+
+**Fix:**
+
+- Connect both `InhibitionCoordinator::stateChanged` and `AppState::changed`
+  to a single refresh that rebuilds/refreshes the menu and icon together.
+- Build the menu once, then update the status action and off action from
+  `Application::awakeState()` on every relevant state change.
+- Map the compact menu status exactly: `Kaeru: OFF` (Inactive),
+  `Kaeru: ON` (Active/PartiallyActive), `Kaeru: ACTIVATING…` (Activating),
+  `Kaeru: ERROR` (Failed/Denied/Unsupported). The status action is enabled
+  (readable, not painted unavailable) and carries remaining/limitation/error
+  detail in its tooltip.
+- Enable `Turn off Kaeru` only for confirmed `Active`/`PartiallyActive`.
+- Rename the tray submenu to `Kaeru` and the action to `Turn off Kaeru`; the
+  main GUI keeps the descriptive `Keep Awake` name.
+- Add `TrayMenuState`/`decideTrayMenuState()` and unit tests covering all
+  seven `EffectiveStatus` values and action enablement.
+
+**Verified with real menu interaction:**
+
+- Initial OFF; 15 minutes from the tray; `ACTIVATING…` (delayed fake portal);
+  confirmed ON with off enabled; clicking `Turn off Kaeru` released the real
+  portal inhibition and returned to OFF with off disabled.
+- Main GUI 15 minutes → tray menu changed to ON without reopening or
+  restarting; tray 2 hours → main GUI showed `1h 59m`.
+- 5-second expiry → OFF; indefinite → ON → manual off → OFF.
+- Fake portal denial (isolated bus, not native portal evidence) → `ERROR`,
+  never ON, off disabled.
+- `diagnostics` showed two capability bindings for one manual request
+  (system sleep + idle), not duplicate/stacked requests.
+
+Procedure and exact results: `docs/testing.md` §2a.
+
+**Still open:** a specific desktop panel's theme, icon scaling and placement
+remain host-side; native portal denial was not forced against the production
+portal (failure/denial use the fake-backend harness plus unit tests).
+
 ## Remaining gaps / not verified
 
 | # | Item | Status |
@@ -139,7 +199,7 @@ the panel’s own desaturation/theme behavior is desktop-side).
 | 5 | Audible notification sound / visual expiry notification | **not observed** — wiring and policy tested; playback is daemon-side |
 | 6 | Live portal denial / fallback scenario in 0.2.0 | **not tested live** — backend failure paths are unit-tested with fakes |
 | 7 | Long-duration expiry (hours) | **not tested** — short expiry probe only |
-| 8 | Tray visual in the real panel | **partial** — SNI item, tooltip and 5 pixmaps verified; panel theme/desaturation is desktop-side |
+| 8 | Tray menu and visual in the real panel | **menu verified** — exported DBusMenu labels/enabled flags and actions, XEmbed-rendered menu clicks, and GNOME panel screenshots; a specific panel's theme/scaling remains desktop-side |
 | 9 | User acceptance of the simplified GUI | **pending** — this report is not acceptance |
 
 ## Status register

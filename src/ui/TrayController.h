@@ -9,7 +9,9 @@
 #include <QSystemTrayIcon>
 #include <QWidget>
 
+class QAction;
 class QLabel;
+class QMenu;
 class QPushButton;
 
 namespace kaeru {
@@ -23,18 +25,22 @@ public:
     bool trayAvailable() const;
 
     void updateIcon();                 // icon + tooltip reflect effective state
-    void rebuildMenu();
+    void rebuildMenu();                // build once, then refresh from live state
 
 private slots:
     void onTrayActivated(QSystemTrayIcon::ActivationReason reason);
     void retryTray();
 
 private:
+    void refreshMenu();
     void createFallbackWindow();
     void updateFallback();
 
     MainWindow* m_window = nullptr;
     QSystemTrayIcon* m_tray = nullptr;
+    QMenu* m_menu = nullptr;
+    QAction* m_statusAction = nullptr;
+    QAction* m_offAction = nullptr;
     bool m_available = false;
     int m_retries = 0;
     QPointer<QWidget> m_fallback;

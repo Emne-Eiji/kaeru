@@ -2,6 +2,15 @@
 
 All notable changes to Kaeru are documented here. Format: Keep a Changelog 1.1; versioning: SemVer.
 
+## [Unreleased]
+
+### Fixed
+- System tray menu now reflects live Keep Awake state instead of freezing at the state present when the tray was created. Activation, release, expiry, failure/denial and Pause All update the menu and icon together. `Turn off Kaeru` is enabled only while inhibition is confirmed active and releases the real inhibition.
+- Tray wording shortened: the status line is exactly `Kaeru: OFF`, `Kaeru: ON`, `Kaeru: ACTIVATING…` or `Kaeru: ERROR`; the submenu is `Kaeru`; the action is `Turn off Kaeru`. The main window keeps the descriptive name “Keep Awake”.
+
+### Added
+- `TrayMenuState`/`decideTrayMenuState()` with data-driven `test_traystate` coverage for all seven effective wake states and off-action enablement.
+
 ## [0.1.1] — 2026-11-15
 
 ### Added

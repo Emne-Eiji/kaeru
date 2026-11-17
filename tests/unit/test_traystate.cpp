@@ -98,6 +98,41 @@ private slots:
         QCOMPARE(p.keepAwakeActive, false);
         QCOMPARE(p.summary, QStringLiteral("activating…"));
     }
+
+    void menuState_data()
+    {
+        QTest::addColumn<int>("status");
+        QTest::addColumn<QString>("statusLine");
+        QTest::addColumn<bool>("offEnabled");
+
+        // Exact compact menu states. Only a confirmed binding may say ON or
+        // enable the off action; selecting a duration is not confirmation.
+        QTest::newRow("inactive") << int(EffectiveStatus::Inactive)
+                                  << QStringLiteral("Kaeru: OFF") << false;
+        QTest::newRow("activating") << int(EffectiveStatus::Activating)
+                                    << QStringLiteral("Kaeru: ACTIVATING…") << false;
+        QTest::newRow("active") << int(EffectiveStatus::Active)
+                                << QStringLiteral("Kaeru: ON") << true;
+        QTest::newRow("partially-active") << int(EffectiveStatus::PartiallyActive)
+                                          << QStringLiteral("Kaeru: ON") << true;
+        QTest::newRow("unsupported") << int(EffectiveStatus::Unsupported)
+                                     << QStringLiteral("Kaeru: ERROR") << false;
+        QTest::newRow("denied") << int(EffectiveStatus::PermissionDenied)
+                                << QStringLiteral("Kaeru: ERROR") << false;
+        QTest::newRow("failed") << int(EffectiveStatus::Failed)
+                                << QStringLiteral("Kaeru: ERROR") << false;
+    }
+
+    void menuState()
+    {
+        QFETCH(int, status);
+        QFETCH(QString, statusLine);
+        QFETCH(bool, offEnabled);
+
+        const TrayMenuState m = decideTrayMenuState(static_cast<EffectiveStatus>(status));
+        QCOMPARE(m.statusLine, statusLine);
+        QCOMPARE(m.offActionEnabled, offEnabled);
+    }
 };
 
 QTEST_MAIN(TestTrayState)

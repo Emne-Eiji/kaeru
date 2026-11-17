@@ -5,6 +5,7 @@
 #include "core/Duration.h"
 #include "core/TrayState.h"
 
+#include <QAction>
 #include <QApplication>
 #include <QLabel>
 #include <QMenu>
@@ -18,13 +19,18 @@ TrayController::TrayController(MainWindow* window, QObject* parent)
     : QObject(parent)
     , m_window(window)
 {
-    // Reflect effective state in icon/tooltip whenever inhibition state changes.
-    connect(window->app()->inhibition(), &InhibitionCoordinator::stateChanged,
-        this, &TrayController::updateIcon);
-    connect(window->app()->appState(), &AppState::changed, this, [this] {
+    // Both the icon and the expanded menu follow the coordinator's
+    // authoritative state. stateChanged is emitted after activation,
+    // failure/denial, manual release and expiry; AppState::changed covers
+    // Pause All and module switches. Refreshing only the icon here was the
+    // cause of the stale "inactive" menu line and disabled off action.
+    const auto refresh = [this] {
         rebuildMenu();
         updateIcon();
-    });
+    };
+    connect(window->app()->inhibition(), &InhibitionCoordinator::stateChanged,
+        this, refresh);
+    connect(window->app()->appState(), &AppState::changed, this, refresh);
 }
 
 void TrayController::ensureStarted()
@@ -75,43 +81,67 @@ void TrayController::onTrayActivated(QSystemTrayIcon::ActivationReason reason)
 void TrayController::rebuildMenu()
 {
     if (!m_tray)
+        return; // retryTray() calls this again once a tray is available
+
+    if (!m_menu) {
+        Application* app = m_window->app();
+        m_menu = new QMenu(m_window);
+
+        m_statusAction = m_menu->addAction(QString());
+        // A status line, not a command: keep it enabled so tray hosts do not
+        // paint it as permanently unavailable/grey. Plain text carries the
+        // state; color is never the only signal.
+        m_statusAction->setEnabled(true);
+        m_statusAction->setCheckable(false);
+        m_menu->addSeparator();
+
+        auto* awakeMenu = m_menu->addMenu(tr("Kaeru"));
+        awakeMenu->addAction(tr("15 minutes"), app, [app] { app->awakeOn(15 * 60 * 1000, QStringLiteral("both")); });
+        awakeMenu->addAction(tr("30 minutes"), app, [app] { app->awakeOn(30 * 60 * 1000, QStringLiteral("both")); });
+        awakeMenu->addAction(tr("1 hour"), app, [app] { app->awakeOn(60 * 60 * 1000, QStringLiteral("both")); });
+        awakeMenu->addAction(tr("2 hours"), app, [app] { app->awakeOn(120 * 60 * 1000, QStringLiteral("both")); });
+        awakeMenu->addAction(tr("Indefinitely"), app, [app] { app->awakeIndefinite(QString()); });
+        awakeMenu->addSeparator();
+        m_offAction = awakeMenu->addAction(tr("Turn off Kaeru"), app, [app] { app->awakeOff(); });
+
+        m_menu->addSeparator();
+        m_menu->addAction(tr("Open Kaeru"), m_window, [this] { m_window->showWindow(); });
+        m_menu->addAction(tr("Settings"), m_window, [this] { m_window->showSettings(); });
+        m_menu->addSeparator();
+        m_menu->addAction(tr("Quit Kaeru"), m_window, [this] {
+            m_window->app()->prepareQuit();
+            qApp->quit();
+        });
+
+        m_tray->setContextMenu(m_menu);
+    }
+
+    refreshMenu();
+}
+
+void TrayController::refreshMenu()
+{
+    if (!m_menu || !m_statusAction || !m_offAction)
         return;
-    auto* menu = new QMenu();
-    Application* app = m_window->app();
 
-    const EffectiveAwakeState state = app->awakeState();
-    QString stateLine = tr("Keep Awake: %1").arg(effectiveStatusName(state.status));
+    const EffectiveAwakeState state = m_window->app()->awakeState();
+    const TrayMenuState menuState = decideTrayMenuState(state.status);
+    m_statusAction->setText(menuState.statusLine);
+    // Never let a host re-enable a stale off action: only confirmed active
+    // inhibition may be turned off. Pending/error states stay disabled.
+    m_offAction->setEnabled(menuState.offActionEnabled);
+
+    QString detail = menuState.statusLine;
     if (state.remainingMs >= 0)
-        stateLine += QStringLiteral(" · ") + formatRemainingMs(state.remainingMs);
-    else if (state.status == EffectiveStatus::Active
-        || state.status == EffectiveStatus::PartiallyActive)
-        stateLine += QStringLiteral(" · ") + tr("until turned off");
-
-    auto* statusAction = menu->addAction(stateLine);
-    statusAction->setEnabled(false);
-    menu->addSeparator();
-
-    auto* awakeMenu = menu->addMenu(tr("Keep Awake"));
-    awakeMenu->addAction(tr("15 minutes"), app, [app] { app->awakeOn(15 * 60 * 1000, QStringLiteral("both")); });
-    awakeMenu->addAction(tr("30 minutes"), app, [app] { app->awakeOn(30 * 60 * 1000, QStringLiteral("both")); });
-    awakeMenu->addAction(tr("1 hour"), app, [app] { app->awakeOn(60 * 60 * 1000, QStringLiteral("both")); });
-    awakeMenu->addAction(tr("2 hours"), app, [app] { app->awakeOn(120 * 60 * 1000, QStringLiteral("both")); });
-    awakeMenu->addAction(tr("Indefinitely"), app, [app] { app->awakeIndefinite(QString()); });
-    awakeMenu->addSeparator();
-    auto* offAction = awakeMenu->addAction(tr("Turn off Keep Awake now"), app, [app] { app->awakeOff(); });
-    offAction->setEnabled(state.status != EffectiveStatus::Inactive);
-
-    menu->addSeparator();
-    menu->addAction(tr("Open Kaeru"), m_window, [this] { m_window->showWindow(); });
-    menu->addAction(tr("Settings"), m_window, [this] { m_window->showSettings(); });
-    menu->addSeparator();
-    menu->addAction(tr("Quit Kaeru"), m_window, [this] {
-        m_window->app()->prepareQuit();
-        qApp->quit();
-    });
-
-    m_tray->setContextMenu(menu);
-    m_tray->setToolTip(tr("Kaeru — %1").arg(effectiveStatusName(state.status)));
+        detail += QStringLiteral(" · ") + formatRemainingMs(state.remainingMs);
+    else if (menuState.offActionEnabled)
+        detail += QStringLiteral(" · ") + tr("until turned off");
+    if (!state.errorDetail.isEmpty())
+        detail += QStringLiteral("\n") + state.errorDetail;
+    else if (!state.limitation.isEmpty())
+        detail += QStringLiteral("\n") + state.limitation;
+    m_statusAction->setToolTip(detail);
+    m_statusAction->setStatusTip(detail);
 }
 
 void TrayController::updateIcon()
@@ -197,17 +227,17 @@ void TrayController::updateFallback()
     if (m_fallback.isNull())
         return;
     const EffectiveAwakeState state = m_window->app()->awakeState();
+    const TrayMenuState menuState = decideTrayMenuState(state.status);
     if (m_fallbackStatus) {
-        QString text = tr("Keep Awake: %1").arg(effectiveStatusName(state.status));
+        QString text = menuState.statusLine;
         if (state.remainingMs >= 0)
             text += QStringLiteral(" · ") + formatRemainingMs(state.remainingMs);
         m_fallbackStatus->setText(text);
     }
     if (m_fallbackToggle) {
-        const bool active = state.status == EffectiveStatus::Active
-            || state.status == EffectiveStatus::PartiallyActive;
-        m_fallbackToggle->setText(active ? tr("Turn off Keep Awake now")
-                                         : tr("Keep awake for 1 hour"));
+        m_fallbackToggle->setText(menuState.offActionEnabled
+                ? tr("Turn off Kaeru")
+                : tr("Keep awake for 1 hour"));
     }
 }
 

@@ -63,7 +63,9 @@ Grouped: Modules (Keep Awake, Focus, Work Log — independent switches), Startup
 
 ## 10. Tray
 
-Menu per spec §8.4: status lines (Keep Awake: state/Reason/Remaining), Keep Awake submenu (15m/30m/1h/2h/Custom…/Until…/Indefinitely), Turn off now, Focus submenu, Work Log submenu (+Today total), Pause All, Open Kaeru, Settings, Diagnostics, Quit. Inapplicable entries disabled (not hidden). Left-click opens main window. No-tray fallback: compact 260 px window with the same actions.
+**Initial release (0.2.0) menu:** one compact status line, then the `Kaeru` submenu (15m/30m/1h/2h/Indefinitely, separator, `Turn off Kaeru`), then Open Kaeru, Settings and Quit. The status line uses one of four exact labels — `Kaeru: OFF`, `Kaeru: ON`, `Kaeru: ACTIVATING…`, `Kaeru: ERROR` — derived from the coordinator's confirmed state. It is a readable non-command: remaining time, limitation and error detail live in its tooltip, and it is not painted as unavailable. `Turn off Kaeru` is enabled only for confirmed active/partially-active inhibition. Tray wording uses the short product name; the main window keeps the descriptive feature name “Keep Awake”. The menu is built once and refreshed on every state change (no reopen/restart needed). Left-click opens the main window. No-tray fallback: compact window with the same live status wording and action gating.
+
+**Deferred design (Focus/Work Log/Reports):** status lines with state/reason/remaining, plus Custom…/Until… durations, Focus submenu, Work Log submenu (+Today total), Pause All and Diagnostics. Inapplicable entries disabled (not hidden).
 
 ## 11. Typography, spacing, color (light/dark)
 
