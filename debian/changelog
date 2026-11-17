@@ -1,3 +1,16 @@
+kaeru (0.2.0-2) unstable; urgency=medium
+
+  * Fix the system tray menu, which stayed frozen at its initial state:
+    activation, release, expiry, failure/denial and Pause All now refresh
+    the open menu and the turn-off action together with the icon.
+  * Show the exact live tray status Kaeru: OFF / ON / ACTIVATING… / ERROR;
+    enable "Turn off Kaeru" only while inhibition is confirmed active.
+  * Shorten tray wording to "Kaeru" and "Turn off Kaeru"; the main window
+    keeps the descriptive "Keep Awake" name.
+  * Add regression tests for all effective wake states and action gating.
+
+ -- Kaeru Maintainers <kaeru@users.noreply.github.com>  Tue, 17 Nov 2026 06:50:00 -0500
+
 kaeru (0.2.0-1) unstable; urgency=medium
 
   * Initial user-facing release focused on dependable Keep Awake.

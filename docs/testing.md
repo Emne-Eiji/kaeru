@@ -75,6 +75,13 @@ committed). The delivery report records the exact observed status values.
 
 ## 2a. Tray menu status/action correction (post-0.2.0, 2026-11-17)
 
+**Deployment correction:** the first pass below used `build/kaeru` from the
+development tree. The installed `/usr/bin/kaeru` remained 0.2.0-1, which
+predates the source fix, so the user's actual application was unchanged.
+The fix was repackaged as 0.2.0-2, installed, and then verified in the real
+GNOME session. The development-build pass is supplementary evidence; the
+installed-package acceptance table below is the authoritative result.
+
 The tray menu was tested as an actual menu, not just as tooltip/pixmap
 properties:
 
@@ -112,6 +119,33 @@ properties:
 The exact labels were also asserted in `test_traystate`:
 `Kaeru: OFF`, `Kaeru: ON`, `Kaeru: ACTIVATING…` and `Kaeru: ERROR`, with
 the off action enabled only for `Active`/`PartiallyActive`.
+
+### Installed-package acceptance (0.2.0-2)
+
+Running binary `/usr/bin/kaeru` (md5 `53eb7ec1eeb60c48b078b4e9a0a2e9a8`),
+matching the packaged 0.2.0-2 binary. The process was launched through
+`/usr/share/applications/io.github.kaeru.Kaeru.desktop`
+(`GIO_LAUNCHED_DESKTOP_FILE`). The actual GNOME panel menu was opened and
+clicked with `xdotool`; the same process's exported DBusMenu was queried
+for the exact labels and enabled flags.
+
+| Workflow | Expected | Actual | Result |
+|---|---|---|---|
+| Package identity | installed app is 0.2.0-2, not 0.2.0-1 | `dpkg-query` 0.2.0-2; `/usr/bin/kaeru` hash equals packaged binary | pass |
+| Initial / after off / after expiry | `Kaeru: OFF`, off disabled | actual GNOME menu `Kaeru: OFF`; `Turn off Kaeru` greyed | pass (screenshot) |
+| Tray → 15 minutes | ON after confirmation, off enabled | actual menu `Kaeru: ON`; off enabled; tooltip active | pass (screenshot) |
+| Click `Turn off Kaeru` | real portal inhibition released; OFF; off disabled | actual mouse click; status inactive; `diagnostics` bindings `[]`; menu OFF/disabled | pass |
+| Main GUI → 2 hours | tray updates to ON / ~1 h 59 m | tray tooltip `1h 59m`; menu ON; GUI `1h 59m` | pass (screenshot) |
+| 5 s expiry | OFF and off disabled without reopening the app | actual menu OFF; bindings `[]` | pass |
+| `ACTIVATING…` visual | exact label while pending | production portal confirmed in <0.2 s, too fast to capture; exact mapping is unit-tested and was observed with the delayed fake backend | pass (unit/supplementary) |
+| Activation failure (`ERROR`) | exact label, never ON, off disabled | not forced against the production portal; mapping unit-tested and fake-denial pass | pass (unit/supplementary) |
+
+Screenshots: `/tmp/opencode/actual-menu-old-crop.png` (old 0.2.0-1 stale
+menu), `/tmp/opencode/actual-submenu-on-crop.png` (installed 0.2.0-2,
+`Kaeru: ON` with `Turn off Kaeru` enabled),
+`/tmp/opencode/actual-submenu-off-after-expiry-crop.png` (installed
+0.2.0-2, `Kaeru: OFF` with `Turn off Kaeru` disabled). These are throwaway
+paths, not committed.
 
 ## 3. Deferred-module read-only verification (0.2.0)
 
@@ -173,5 +207,7 @@ only to confirm no Kaeru logind inhibitor remains.
    XEmbed-rendered Qt menu; a specific panel's theme, icon scaling and
    placement remain desktop-side and are not asserted.
 5. DST machine-clock change not performed; validated via TZ injection.
-6. Root package lifecycle tests blocked by sudo password.
+6. The user installed 0.2.0-2 (uninstall 0.2.0-1 + install 0.2.0-2) and it
+   was verified in the real session. The full automated
+   upgrade/downgrade/remove/reinstall matrix remains blocked by sudo.
 7. Audible notification playback is daemon-side and was not observed.

@@ -13,7 +13,7 @@
 | C | Focus Timer design rejected | **Deferred**: removed from GUI/CLI; source, tests and data retained; no redesign attempted | §C below |
 | D | Work Log records work prematurely | **Deferred and made read-only**: removed from GUI/CLI; the preserved database is not opened or written | §D below |
 | E | Focused icon is broken | **Fixed for runtime rendering**: embedded PNG variants replace SVG rendering | §E below |
-| F | Tray always shows `Keep Awake: inactive`; “Turn off” permanently disabled | **Fixed and tray-menu-verified**: live coordinator state refreshes menu + action; tray labels shortened to `Kaeru` | §F below |
+| F | Tray always shows `Keep Awake: inactive`; “Turn off” permanently disabled | **Fixed, packaged in 0.2.0-2, and verified in the installed app**: live coordinator state refreshes menu + action; tray labels shortened to `Kaeru` | §F below |
 
 ## Issue A — Two Debian packages (debug symbols)
 
@@ -184,15 +184,34 @@ was confirmed active.
 
 Procedure and exact results: `docs/testing.md` §2a.
 
+**Deployment gap found after the first report (2026-11-17):** the source fix
+and the first verification used `build/kaeru`, but the installed application
+was still `/usr/bin/kaeru` 0.2.0-1 (md5 `474d240a…`, built 2026-11-16
+11:51) from `dist/0.2.0/kaeru_0.2.0-1_amd64.deb`. The desktop entry and
+autostart both call `kaeru`, so GNOME kept launching the old installed
+binary and the user saw the old labels and frozen menu. This was a
+packaging/deployment gap, not a source regression.
+
+Resolution: `debian/changelog` now has 0.2.0-2; the package was rebuilt and
+installed. The actual running process is `/usr/bin/kaeru` launched through
+`/usr/share/applications/io.github.kaeru.Kaeru.desktop`
+(`GIO_LAUNCHED_DESKTOP_FILE`), binary md5
+`53eb7ec1eeb60c48b078b4e9a0a2e9a8`, and the real GNOME menu was verified to
+show `Kaeru: OFF/ON`, the shortened `Kaeru` submenu, and the correctly gated
+`Turn off Kaeru`. The `.ddeb` is optional debug symbols, not the
+application; the installable app is `kaeru_0.2.0-2_amd64.deb`.
+
 **Still open:** a specific desktop panel's theme, icon scaling and placement
-remain host-side; native portal denial was not forced against the production
-portal (failure/denial use the fake-backend harness plus unit tests).
+remain host-side; native portal denial and a visible `ACTIVATING…` state were
+not forced against the production portal (the production portal confirms too
+quickly). Failure/denial and pending mapping use the fake-backend harness
+plus unit tests.
 
 ## Remaining gaps / not verified
 
 | # | Item | Status |
 |---|---|---|
-| 1 | Real `dpkg`/`apt` install, upgrade, remove, reinstall | **not tested** — root password unavailable; root-assisted procedure requested in the delivery report |
+| 1 | Real `dpkg`/`apt` install, upgrade, remove, reinstall | **partially tested** — user uninstalled 0.2.0-1 and installed 0.2.0-2, verified in the real session; full automated lifecycle matrix remains blocked by root password |
 | 2 | Ubuntu 24.04 native validation | **not tested** — no machine; Pop!_OS 22.04 / Ubuntu 22.04 base only |
 | 3 | Wayland session | **not tested** — X11 only |
 | 4 | Real suspend/resume cycle | **not tested** — requires a real suspend; unit clock simulation only |
