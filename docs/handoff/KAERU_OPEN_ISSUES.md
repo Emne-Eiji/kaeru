@@ -14,6 +14,7 @@
 | D | Work Log records work prematurely | **Deferred and made read-only**: removed from GUI/CLI; the preserved database is not opened or written | §D below |
 | E | Focused icon is broken | **Fixed for runtime rendering**: embedded PNG variants replace SVG rendering | §E below |
 | F | Tray always shows `Keep Awake: inactive`; “Turn off” permanently disabled | **Fixed, packaged in 0.2.0-2, and verified in the installed app**: live coordinator state refreshes menu + action; tray labels shortened to `Kaeru` | §F below |
+| G | WP-08/WP-09: interactive tray status, custom/persistent durations, refined GUI/About/themes | **Implemented at 0.2.0-3**: shared duration model, interactive status, custom dialog, About/update check, complete theming; real GNOME OFF→ON menu verified before screen lock | `KAERU_WP08_WP09.md` |
 
 ## Issue A — Two Debian packages (debug symbols)
 

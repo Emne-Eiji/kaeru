@@ -4,13 +4,24 @@ All notable changes to Kaeru are documented here. Format: Keep a Changelog 1.1; 
 
 ## [Unreleased]
 
+### WP-08 — tray interaction and unified timer selection
+- Tray status is now an interactive two-line item: `Kaeru: ON`/`OFF` with a green/red state indicator and a smaller gray detail line (`1h 24m remaining`, `Indefinite`, `Inactive`, `Starting…`). The old `Turn off Kaeru` action is removed; the status item toggles using the last selected duration.
+- Left-click the tray icon to toggle; right-click opens the existing compact menu. Duration submenu is `Kaeru` with 15 minutes, 30 minutes, 1 hour, 2 hours, Indefinitely and `Custom…` immediately below Indefinitely. No “Keep Awake” wording in the tray.
+- Shared `AwakeDuration` model used by tray and GUI: custom hours/minutes (finite, 1 minute to 7 days, matching existing CLI limits), validation, persistence of the last selection across OFF/ON and restarts, fresh timer on reactivation, and immediate restart when the duration changes while active.
+- Custom duration is available in both the tray and the main GUI through one validated dialog. Corrupt stored tokens fall back to 1 hour.
+
+### WP-09 — main GUI refinement
+- Removed the File menu; navigation is Keep Awake, Settings, Diagnostics, About. Quit remains only in the tray. Window title is exactly `Kaeru`; default size 1100×760, minimum 900×650, with saved size/position restored safely on-screen.
+- About is a separate page with unchanged official frog artwork, version, description, GPL-3.0-or-later license, acknowledgements, the official repository link and a `Check for Updates` action against GitHub Releases. It never claims “up to date” after a failed, rate-limited, malformed or 404 response.
+- Light/Dark/System themes now apply immediately through a complete palette and stylesheet (sidebar, cards, inputs, tables, menus, dialogs, scrollbars, tooltips) and persist across restarts; `System` follows the desktop portal color scheme.
+- Build targets: Qt Network for update checks; new unit suites for duration, persistence, update parsing, theme and window restore.
+
 ### Fixed
-- System tray menu now reflects live Keep Awake state instead of freezing at the state present when the tray was created. Activation, release, expiry, failure/denial and Pause All update the menu and icon together. `Turn off Kaeru` is enabled only while inhibition is confirmed active and releases the real inhibition.
-- Tray wording shortened: the status line is exactly `Kaeru: OFF`, `Kaeru: ON`, `Kaeru: ACTIVATING…` or `Kaeru: ERROR`; the submenu is `Kaeru`; the action is `Turn off Kaeru`. The main window keeps the descriptive name “Keep Awake”.
-- Shipped in Debian package 0.2.0-2; the earlier 0.2.0-1 package predates this correction. The optional `kaeru-dbgsym` `.ddeb` is debug symbols only, not the application.
+- System tray menu reflects live Keep Awake state instead of freezing at its initial state (shipped in 0.2.0-2). Status, activation, release, expiry, failure/denial and Pause All refresh the icon and menu together.
+- Tray wording shortened to `Kaeru` / `Kaeru: ON` / `Kaeru: OFF`; the optional `.ddeb` contains debug symbols only, not the application.
 
 ### Added
-- `TrayMenuState`/`decideTrayMenuState()` with data-driven `test_traystate` coverage for all seven effective wake states and off-action enablement.
+- `TrayMenuState`/`decideTrayMenuState()` with data-driven `test_traystate` coverage for all effective wake states and the interactive status/detail lines.
 
 ## [0.1.1] — 2026-11-15
 

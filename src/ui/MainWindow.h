@@ -13,12 +13,14 @@ namespace kaeru {
 class OverviewPage;
 class SettingsPage;
 class DiagnosticsPage;
+class AboutPage;
 class TrayController;
 
 class MainWindow final : public QMainWindow {
     Q_OBJECT
 public:
     explicit MainWindow(Application* app, QWidget* parent = nullptr);
+    ~MainWindow() override;
 
     void showWindow();
     void showSettings();
@@ -33,6 +35,8 @@ protected:
 private:
     void buildUi();
     void applyTheme();
+    void restoreWindowGeometry();
+    void saveWindowGeometry() const;
 
     Application* m_app = nullptr;
     QListWidget* m_nav = nullptr;
@@ -42,6 +46,7 @@ private:
     OverviewPage* m_overview = nullptr;
     SettingsPage* m_settings = nullptr;
     DiagnosticsPage* m_diagnostics = nullptr;
+    AboutPage* m_about = nullptr;
 };
 
 } // namespace kaeru

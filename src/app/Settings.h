@@ -32,6 +32,12 @@ public:
     QString theme() const; // "system" | "light" | "dark"
     void setTheme(const QString& theme);
 
+    // Keep Awake selection / window placement (WP-08, WP-09)
+    QString lastAwakeDurationToken() const;
+    void setLastAwakeDurationToken(const QString& token);
+    bool windowGeometry(QRect* rect) const;
+    void setWindowGeometry(const QRect& rect);
+
     // Work log defaults
     bool pauseWorkWhenLocked() const;
     void setPauseWorkWhenLocked(bool on);

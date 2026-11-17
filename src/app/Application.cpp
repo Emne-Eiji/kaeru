@@ -340,6 +340,60 @@ void Application::awakeUntil(const QDateTime& localUntil, const QString& reason)
         QStringLiteral("both"), reason));
 }
 
+AwakeDuration Application::lastAwakeDuration() const
+{
+    AwakeDuration d;
+    if (!AwakeDuration::fromToken(m_settings->lastAwakeDurationToken(), &d))
+        return AwakeDuration::standard(AwakeDuration::Kind::Hour1);
+    return d;
+}
+
+void Application::selectAwakeDuration(const AwakeDuration& duration)
+{
+    // Reject an invalid custom value rather than silently substituting a
+    // different duration. The dialog/UI validates first; this guard keeps
+    // every caller (including future ones) honest.
+    if (duration.isCustom()) {
+        if (duration.customMs < kMinCustomAwakeMs
+            || duration.customMs > kMaxCustomAwakeMs
+            || duration.customMs % (60LL * 1000) != 0)
+            return;
+    } else if (!duration.isIndefinite() && duration.durationMs() <= 0) {
+        return;
+    }
+
+    m_settings->setLastAwakeDurationToken(duration.token());
+    if (duration.isIndefinite())
+        awakeIndefinite(QString());
+    else
+        awakeOn(duration.durationMs(), QStringLiteral("both"));
+}
+
+void Application::activateLastAwakeDuration()
+{
+    // awakeOn()/awakeIndefinite() create a fresh request timestamp, so a new
+    // activation never resumes an expired or previously stopped timer.
+    selectAwakeDuration(lastAwakeDuration());
+}
+
+void Application::toggleKeepAwake()
+{
+    const EffectiveStatus status = awakeState().status;
+    if (status == EffectiveStatus::Active || status == EffectiveStatus::PartiallyActive) {
+        awakeOff();
+        return;
+    }
+    if (status == EffectiveStatus::Activating)
+        return; // one request at a time; do not stack a duplicate activation
+    activateLastAwakeDuration();
+}
+
+bool Application::keepAwakeConfirmedActive() const
+{
+    const EffectiveStatus status = awakeState().status;
+    return status == EffectiveStatus::Active || status == EffectiveStatus::PartiallyActive;
+}
+
 void Application::releaseKeepAwake(const QUuid& requestId)
 {
     if (m_manualAwake.isActive() && m_manualAwake.requestId() == requestId)

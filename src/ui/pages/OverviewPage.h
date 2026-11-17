@@ -18,7 +18,7 @@ public:
 
 private slots:
     void refresh();
-    void onDurationChosen(qint64 ms);
+    void onCustomDuration();
     void onTurnOffNow();
 
 private:
@@ -26,6 +26,7 @@ private:
     StatusBadge* m_awakeBadge = nullptr;
     QLabel* m_awakeDetail = nullptr;
     QLabel* m_awakeRemaining = nullptr;
+    QLabel* m_lastSelection = nullptr;
     QPushButton* m_turnOffButton = nullptr;
 };
 

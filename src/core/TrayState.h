@@ -17,6 +17,7 @@
 //   4. Anything else                   → Sleep (error detail preserved)
 // The tooltip carries every active fact, so no state is ever miscommunicated.
 #pragma once
+#include "Duration.h"
 #include "Types.h"
 
 #include <QString>
@@ -35,36 +36,45 @@ struct TrayPresentation {
     QString detail;             // reason / limitation / error detail
 };
 
-// Compact tray-menu state (not the tooltip). The menu has room for four
-// honest states only: no active inhibition, confirmed active inhibition,
-// activation pending, or activation failed/denied/unsupported. "ON" is never
-// derived from a selected duration; the coordinator must have confirmed at
-// least one active binding.
+// Compact tray-menu state (not the tooltip). The interactive status is the
+// only activation control: it shows an honest ON/OFF line plus a second,
+// quieter detail line. "ON" is never derived from a selected duration — the
+// coordinator must have confirmed at least one active binding.
 struct TrayMenuState {
     QString statusLine;
-    bool offActionEnabled = false;
+    QString detailLine;
+    bool active = false;   // confirmed inhibition (ON)
+    bool error = false;    // failed/denied/unsupported; never ON
 };
 
-inline TrayMenuState decideTrayMenuState(EffectiveStatus awakeStatus)
+inline TrayMenuState decideTrayMenuState(EffectiveStatus awakeStatus,
+                                         qint64 remainingMs)
 {
     TrayMenuState m;
     switch (awakeStatus) {
     case EffectiveStatus::Active:
     case EffectiveStatus::PartiallyActive:
         m.statusLine = QStringLiteral("Kaeru: ON");
-        m.offActionEnabled = true;
+        m.detailLine = remainingMs >= 0
+            ? QStringLiteral("%1 remaining").arg(formatRemainingMs(remainingMs))
+            : QStringLiteral("Indefinite");
+        m.active = true;
         break;
     case EffectiveStatus::Activating:
         m.statusLine = QStringLiteral("Kaeru: ACTIVATING…");
+        m.detailLine = QStringLiteral("Starting…");
         break;
     case EffectiveStatus::PermissionDenied:
     case EffectiveStatus::Failed:
     case EffectiveStatus::Unsupported:
         m.statusLine = QStringLiteral("Kaeru: ERROR");
+        m.detailLine = QStringLiteral("Inactive");
+        m.error = true;
         break;
     case EffectiveStatus::Inactive:
     default:
         m.statusLine = QStringLiteral("Kaeru: OFF");
+        m.detailLine = QStringLiteral("Inactive");
         break;
     }
     return m;

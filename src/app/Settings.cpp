@@ -54,6 +54,46 @@ void Settings::setSoundEnabled(bool on) { m_settings.setValue(QStringLiteral("no
 QString Settings::theme() const { return m_settings.value(QStringLiteral("appearance/theme"), QStringLiteral("system")).toString(); }
 void Settings::setTheme(const QString& theme) { m_settings.setValue(QStringLiteral("appearance/theme"), theme); m_settings.sync(); emit changed(); }
 
+QString Settings::lastAwakeDurationToken() const
+{
+    return m_settings.value(QStringLiteral("keepAwake/lastDuration"),
+                            QStringLiteral("1h")).toString();
+}
+
+void Settings::setLastAwakeDurationToken(const QString& token)
+{
+    m_settings.setValue(QStringLiteral("keepAwake/lastDuration"), token);
+    m_settings.sync();
+}
+
+bool Settings::windowGeometry(QRect* rect) const
+{
+    if (!rect)
+        return false;
+    if (!m_settings.contains(QStringLiteral("window/width"))
+        || !m_settings.contains(QStringLiteral("window/height")))
+        return false;
+    const int width = m_settings.value(QStringLiteral("window/width"), 0).toInt();
+    const int height = m_settings.value(QStringLiteral("window/height"), 0).toInt();
+    if (width <= 0 || height <= 0)
+        return false;
+    *rect = QRect(m_settings.value(QStringLiteral("window/x"), 0).toInt(),
+                  m_settings.value(QStringLiteral("window/y"), 0).toInt(),
+                  width, height);
+    return true;
+}
+
+void Settings::setWindowGeometry(const QRect& rect)
+{
+    if (!rect.isValid() || rect.width() <= 0 || rect.height() <= 0)
+        return;
+    m_settings.setValue(QStringLiteral("window/x"), rect.x());
+    m_settings.setValue(QStringLiteral("window/y"), rect.y());
+    m_settings.setValue(QStringLiteral("window/width"), rect.width());
+    m_settings.setValue(QStringLiteral("window/height"), rect.height());
+    m_settings.sync();
+}
+
 bool Settings::pauseWorkWhenLocked() const { return m_settings.value(QStringLiteral("worklog/pauseWhenLocked"), true).toBool(); }
 void Settings::setPauseWorkWhenLocked(bool on) { m_settings.setValue(QStringLiteral("worklog/pauseWhenLocked"), on); m_settings.sync(); emit changed(); }
 QString Settings::defaultProject() const { return m_settings.value(QStringLiteral("worklog/defaultProject"), QStringLiteral("General")).toString(); }

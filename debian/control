@@ -6,7 +6,7 @@ Build-Depends: debhelper-compat (= 13),
                cmake (>= 3.16),
                qt6-base-dev (>= 6.2)
 Standards-Version: 4.6.2
-Homepage: https://github.com/kaeru/kaeru
+Homepage: https://github.com/Emne-Eiji/kaeru
 Rules-Requires-Root: no
 
 Package: kaeru

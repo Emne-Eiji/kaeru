@@ -1,4 +1,4 @@
-// Kaeru unit tests — tray presentation mapping (ADR-008 frog identity)
+// Kaeru unit tests — tray presentation mapping (ADR-008 frog identity, WP-08)
 #include "core/TrayState.h"
 
 #include <QtTest>
@@ -50,8 +50,6 @@ private slots:
 
     void bothActiveShowsAwakeSafetyFirst()
     {
-        // Awake + focus: protection wins the icon; focus stays in the
-        // structured result so the tooltip can state it (ADR-008).
         const TrayPresentation p = decideTrayPresentation(
             EffectiveStatus::Active, true, false, QString(), QString());
         QCOMPARE(p.icon, TrayPresentation::Icon::Awake);
@@ -66,7 +64,7 @@ private slots:
         QCOMPARE(p.icon, TrayPresentation::Icon::Sleep);
         QCOMPARE(p.pausedAll, true);
         QCOMPARE(p.summary, QStringLiteral("paused (Pause All)"));
-        QCOMPARE(p.keepAwakeActive, false); // Pause All released everything
+        QCOMPARE(p.keepAwakeActive, false);
     }
 
     void failureIsHonestNotCalm()
@@ -91,7 +89,6 @@ private slots:
 
     void activatingIsNotYetAwake()
     {
-        // Activation pending must never show the awake face (no false claim).
         const TrayPresentation p = decideTrayPresentation(
             EffectiveStatus::Activating, false, false, QString(), QString());
         QCOMPARE(p.icon, TrayPresentation::Icon::Sleep);
@@ -102,36 +99,55 @@ private slots:
     void menuState_data()
     {
         QTest::addColumn<int>("status");
+        QTest::addColumn<qint64>("remainingMs");
         QTest::addColumn<QString>("statusLine");
-        QTest::addColumn<bool>("offEnabled");
+        QTest::addColumn<QString>("detailLine");
+        QTest::addColumn<bool>("active");
+        QTest::addColumn<bool>("error");
 
-        // Exact compact menu states. Only a confirmed binding may say ON or
-        // enable the off action; selecting a duration is not confirmation.
-        QTest::newRow("inactive") << int(EffectiveStatus::Inactive)
-                                  << QStringLiteral("Kaeru: OFF") << false;
-        QTest::newRow("activating") << int(EffectiveStatus::Activating)
-                                    << QStringLiteral("Kaeru: ACTIVATING…") << false;
-        QTest::newRow("active") << int(EffectiveStatus::Active)
-                                << QStringLiteral("Kaeru: ON") << true;
+        QTest::newRow("inactive") << int(EffectiveStatus::Inactive) << qint64(-1)
+                                  << QStringLiteral("Kaeru: OFF")
+                                  << QStringLiteral("Inactive") << false << false;
+        QTest::newRow("activating") << int(EffectiveStatus::Activating) << qint64(-1)
+                                    << QStringLiteral("Kaeru: ACTIVATING…")
+                                    << QStringLiteral("Starting…") << false << false;
+        QTest::newRow("active-timed") << int(EffectiveStatus::Active)
+                                      << qint64(84 * 60 * 1000)
+                                      << QStringLiteral("Kaeru: ON")
+                                      << QStringLiteral("1h 24m remaining") << true << false;
+        QTest::newRow("active-indefinite") << int(EffectiveStatus::Active) << qint64(-1)
+                                          << QStringLiteral("Kaeru: ON")
+                                          << QStringLiteral("Indefinite") << true << false;
         QTest::newRow("partially-active") << int(EffectiveStatus::PartiallyActive)
-                                          << QStringLiteral("Kaeru: ON") << true;
-        QTest::newRow("unsupported") << int(EffectiveStatus::Unsupported)
-                                     << QStringLiteral("Kaeru: ERROR") << false;
-        QTest::newRow("denied") << int(EffectiveStatus::PermissionDenied)
-                                << QStringLiteral("Kaeru: ERROR") << false;
-        QTest::newRow("failed") << int(EffectiveStatus::Failed)
-                                << QStringLiteral("Kaeru: ERROR") << false;
+                                          << qint64(-1)
+                                          << QStringLiteral("Kaeru: ON")
+                                          << QStringLiteral("Indefinite") << true << false;
+        QTest::newRow("unsupported") << int(EffectiveStatus::Unsupported) << qint64(-1)
+                                     << QStringLiteral("Kaeru: ERROR")
+                                     << QStringLiteral("Inactive") << false << true;
+        QTest::newRow("denied") << int(EffectiveStatus::PermissionDenied) << qint64(-1)
+                                << QStringLiteral("Kaeru: ERROR")
+                                << QStringLiteral("Inactive") << false << true;
+        QTest::newRow("failed") << int(EffectiveStatus::Failed) << qint64(-1)
+                                << QStringLiteral("Kaeru: ERROR")
+                                << QStringLiteral("Inactive") << false << true;
     }
 
     void menuState()
     {
         QFETCH(int, status);
+        QFETCH(qint64, remainingMs);
         QFETCH(QString, statusLine);
-        QFETCH(bool, offEnabled);
+        QFETCH(QString, detailLine);
+        QFETCH(bool, active);
+        QFETCH(bool, error);
 
-        const TrayMenuState m = decideTrayMenuState(static_cast<EffectiveStatus>(status));
+        const TrayMenuState m = decideTrayMenuState(
+            static_cast<EffectiveStatus>(status), remainingMs);
         QCOMPARE(m.statusLine, statusLine);
-        QCOMPARE(m.offActionEnabled, offEnabled);
+        QCOMPARE(m.detailLine, detailLine);
+        QCOMPARE(m.active, active);
+        QCOMPARE(m.error, error);
     }
 };
 

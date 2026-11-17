@@ -134,6 +134,7 @@ Package audit:
 - Icons: `docs/icon-assets.md`, ADR-008.
 - Historical 0.1.1 report: `docs/delivery-report.md` (superseded, retained
   for history).
+- WP-08/WP-09 implementation: `docs/handoff/KAERU_WP08_WP09.md`.
 - Agent rules: `AGENTS.md`.
 
 ## 8. Known contradictions resolved

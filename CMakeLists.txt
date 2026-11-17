@@ -17,7 +17,7 @@ set(KAERU_APP_ID "io.github.kaeru.Kaeru")
 add_compile_definitions(KAERU_APP_ID="${KAERU_APP_ID}")
 add_compile_definitions(KAERU_VERSION="${PROJECT_VERSION}")
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets DBus Sql Test)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets DBus Network Sql Test)
 
 # ---- core library (no DBus/SQL/Widgets) ----
 add_library(kaeru_core STATIC
@@ -33,6 +33,7 @@ add_library(kaeru_core STATIC
   src/core/FocusController.cpp
   src/core/CapabilityRegistry.cpp
   src/core/AppState.cpp
+  src/core/AwakeDuration.cpp
 )
 target_include_directories(kaeru_core PUBLIC src)
 target_link_libraries(kaeru_core PUBLIC Qt6::Core)
@@ -70,8 +71,9 @@ add_library(kaeru_app STATIC
   src/app/RecoveryManager.cpp
   src/app/Settings.cpp
   src/app/WorkSessionManager.cpp
+  src/app/UpdateChecker.cpp
 )
-target_link_libraries(kaeru_app PUBLIC Qt6::Core Qt6::DBus kaeru_core kaeru_platform kaeru_storage)
+target_link_libraries(kaeru_app PUBLIC Qt6::Core Qt6::DBus Qt6::Network kaeru_core kaeru_platform kaeru_storage)
 
 # ---- UI library ----
 add_library(kaeru_ui STATIC
@@ -79,6 +81,8 @@ add_library(kaeru_ui STATIC
   src/ui/Theme.cpp
   src/ui/Icons.cpp
   src/ui/TrayController.cpp
+  src/ui/CustomDurationDialog.cpp
+  src/ui/WindowGeometry.h
   src/ui/widgets/StatusBadge.cpp
   src/ui/pages/OverviewPage.cpp
   src/ui/pages/FocusPage.cpp
@@ -86,6 +90,7 @@ add_library(kaeru_ui STATIC
   src/ui/pages/ReportsPage.cpp
   src/ui/pages/SettingsPage.cpp
   src/ui/pages/DiagnosticsPage.cpp
+  src/ui/pages/AboutPage.cpp
 )
 target_link_libraries(kaeru_ui PUBLIC Qt6::Widgets Qt6::Gui kaeru_app)
 
@@ -110,7 +115,7 @@ target_link_libraries(kaeru PRIVATE kaeru_ui Qt6::Widgets)
 
 # ---- unit tests ----
 enable_testing()
-foreach(t IN ITEMS clocks registry coordinator timerengine focus worklog storage csv cliparser notify workmanager reports traystate manualawake icons)
+foreach(t IN ITEMS clocks registry coordinator timerengine focus worklog storage csv cliparser notify workmanager reports traystate manualawake icons awakeduration settings updates theme windowgeometry)
   add_executable(test_${t} tests/unit/test_${t}.cpp)
   target_link_libraries(test_${t} PRIVATE kaeru_app kaeru_ui Qt6::Test)
   add_test(NAME test_${t} COMMAND test_${t})

@@ -211,3 +211,27 @@ only to confirm no Kaeru logind inhibitor remains.
    was verified in the real session. The full automated
    upgrade/downgrade/remove/reinstall matrix remains blocked by sudo.
 7. Audible notification playback is daemon-side and was not observed.
+
+## 8. WP-08 / WP-09 verification (0.2.0-3 checkpoint)
+
+- Clean Release build: zero warnings; `ctest`: 20/20 suites passing, including
+  new suites for duration validation/persistence (`awakeduration`,
+  `settings`), update parsing/error honesty (`updates`), complete theme
+  application (`theme`), safe window restore (`windowgeometry`) and
+  interactive tray state/detail (`traystate`).
+- Real GNOME session (development binary, isolated `KAERU_TEST_HOME`): the
+  exported DBusMenu showed the status item as
+  `Kaeru: OFF\nInactive`, then `Kaeru: ON\n… remaining` with a green status
+  dot after a tray left-click activation. Right-click opened the same compact
+  menu without changing state. The menu contained `Custom…` immediately below
+  `Indefinitely` and no `Turn off Kaeru` action.
+- Screenshot evidence (throwaway paths):
+  `/tmp/opencode/wp0809-menu-off-crop.png` (OFF),
+  `/tmp/opencode/wp0809-menu-on2-crop.png` (ON with remaining time). The GNOME
+  screen locked before the second left-click OFF transition and full GUI
+  theme screenshot pass could be completed; those items remain **implemented
+  but not fully verified in the real session**.
+- Limitation: DBusMenu labels are plain text, so individual-word colors and
+  per-line font sizes cannot be expressed in the GNOME panel. The status dot
+  is green/red and the text is exact; Qt-hosted menus use rich text.
+- Full implementation record: `docs/handoff/KAERU_WP08_WP09.md`.

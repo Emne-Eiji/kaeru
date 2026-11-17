@@ -1,3 +1,18 @@
+kaeru (0.2.0-3) unstable; urgency=medium
+
+  * WP-08: interactive tray status (Kaeru: ON/OFF with green/red indicator
+    and gray remaining-time detail), left-click toggle, right-click menu,
+    removal of the redundant off action, and a shared custom/persistent
+    duration model used by tray and GUI.
+  * WP-09: remove the File menu, add an About navigation page with official
+    artwork and read-only GitHub Releases update checking, title exactly
+    Kaeru, larger resizable window with safe geometry restore, and complete
+    Light/Dark/System theming that applies immediately.
+  * Add unit tests for duration validation/persistence, update-check parsing,
+    theme coverage and window placement.
+
+ -- Kaeru Maintainers <kaeru@users.noreply.github.com>  Tue, 17 Nov 2026 10:30:00 -0500
+
 kaeru (0.2.0-2) unstable; urgency=medium
 
   * Fix the system tray menu, which stayed frozen at its initial state:

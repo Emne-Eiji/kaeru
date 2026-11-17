@@ -233,19 +233,21 @@ is a valid reply with ServiceNotRegistered, checked by value),
 
 ## 10. UI (`src/ui/`)
 
-`MainWindow` (sidebar nav with **three pages: Keep Awake, Settings,
-Diagnostics**; Ctrl+1..3; File > Settings/Quit; close hides when tray
-available), `TrayController` (SNI icon + tooltip + one persistently built menu
-refreshed from `InhibitionCoordinator::stateChanged`/`AppState::changed`;
-exact `Kaeru: OFF/ON/ACTIVATING…/ERROR` status line, `Kaeru` duration submenu,
-`Turn off Kaeru` gated on confirmed activation, Open, Settings, Quit; fallback
-window after 5×1 s retries), `Icons`
-(loads `:/icons/frog/png/*.png`), `Theme` (light/dark QSS), `StatusBadge`
-(icon+word+shape, never color-only). Pages: Overview (stable-layout Keep
-Awake card, duration chips 15m/30m/1h/2h/Indefinitely, one turn-off action),
-Settings (startup/autostart, notifications, appearance, data, quit),
-Diagnostics (capability table + live bindings). Focus/WorkLog/Reports pages
-remain in the source tree but are not constructed.
+`MainWindow` (sidebar nav with **four pages: Keep Awake, Settings,
+Diagnostics, About**; Ctrl+1..4/Ctrl+,; no File menu; close hides when tray
+available; safe saved geometry restore), `TrayController` (SNI icon + tooltip
++ one persistently built menu refreshed from
+`InhibitionCoordinator::stateChanged`/`AppState::changed` and a 1 s timer;
+interactive two-line `Kaeru: ON/OFF` status, `Kaeru` duration submenu ending
+in `Custom…`, Open, Settings, Quit; fallback window after 5×1 s retries),
+`Icons` (loads `:/icons/frog/png/*.png`), `Theme` (complete light/dark/system
+palette + QSS, applied live), `StatusBadge` (icon+word+shape, never
+color-only), `CustomDurationDialog`, `WindowGeometry`. Pages: Overview (Keep
+Awake card, duration chips incl. custom, last-selection display), Settings
+(startup/autostart, notifications, appearance, data), Diagnostics (capability
+table + live bindings), About (official artwork, version, license,
+acknowledgements, repository link, GitHub Releases check). Focus/WorkLog/
+Reports pages remain in the source tree but are not constructed.
 
 ## 11. Frog identity (`docs/icon-assets.md`, ADR-008)
 

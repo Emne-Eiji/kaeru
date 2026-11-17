@@ -2,6 +2,7 @@
 #pragma once
 #include "Settings.h"
 #include "core/AppState.h"
+#include "core/AwakeDuration.h"
 #include "core/CapabilityRegistry.h"
 #include "core/FocusController.h"
 #include "core/InhibitionCoordinator.h"
@@ -61,6 +62,15 @@ public:
     void awakeUntil(const QDateTime& localUntil, const QString& reason);
     void releaseKeepAwake(const QUuid& requestId);
     void resumeAutomaticRules();
+
+    // Shared timer selection (WP-08): persist the last choice, then start or
+    // replace the active request. A finite custom duration is never treated
+    // as Indefinitely. Turning off does not erase the saved choice.
+    AwakeDuration lastAwakeDuration() const;
+    void selectAwakeDuration(const AwakeDuration& duration);
+    void activateLastAwakeDuration();
+    void toggleKeepAwake();
+    bool keepAwakeConfirmedActive() const;
 
     void pauseAll();   // spec §7
     void unpauseAll();

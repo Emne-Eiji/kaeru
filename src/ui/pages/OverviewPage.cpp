@@ -1,6 +1,8 @@
 #include "OverviewPage.h"
+#include "ui/CustomDurationDialog.h"
 #include "ui/widgets/StatusBadge.h"
 
+#include "core/AwakeDuration.h"
 #include "core/Duration.h"
 
 #include <QFrame>
@@ -69,26 +71,42 @@ OverviewPage::OverviewPage(Application* app, QWidget* parent)
 
     auto* durationRow = new QHBoxLayout();
     durationRow->setSpacing(6);
-    const QList<QPair<QString, qint64>> chips = {
-        { tr("15 minutes"), 15 * 60 * 1000 },
-        { tr("30 minutes"), 30 * 60 * 1000 },
-        { tr("1 hour"), 60 * 60 * 1000 },
-        { tr("2 hours"), 120 * 60 * 1000 },
+    const QList<QPair<QString, AwakeDuration::Kind>> chips = {
+        { tr("15 minutes"), AwakeDuration::Kind::Minutes15 },
+        { tr("30 minutes"), AwakeDuration::Kind::Minutes30 },
+        { tr("1 hour"), AwakeDuration::Kind::Hour1 },
+        { tr("2 hours"), AwakeDuration::Kind::Hours2 },
     };
     for (const auto& chip : chips) {
         auto* b = new QPushButton(chip.first, card);
         b->setToolTip(tr("Keep awake for %1").arg(chip.first));
         b->setAccessibleName(tr("Keep awake for %1").arg(chip.first));
-        connect(b, &QPushButton::clicked, this, [this, ms = chip.second] { onDurationChosen(ms); });
+        connect(b, &QPushButton::clicked, this, [this, kind = chip.second] {
+            m_app->selectAwakeDuration(AwakeDuration::standard(kind));
+            refresh();
+        });
         durationRow->addWidget(b);
     }
     auto* indefinite = new QPushButton(tr("Indefinitely"), card);
     indefinite->setToolTip(tr("Keep awake until you turn it off"));
     indefinite->setAccessibleName(tr("Keep awake until turned off"));
-    connect(indefinite, &QPushButton::clicked, this, [this] { onDurationChosen(0); });
+    connect(indefinite, &QPushButton::clicked, this, [this] {
+        m_app->selectAwakeDuration(AwakeDuration::standard(AwakeDuration::Kind::Indefinite));
+        refresh();
+    });
     durationRow->addWidget(indefinite);
+    auto* custom = new QPushButton(tr("Custom…"), card);
+    custom->setToolTip(tr("Choose a custom finite duration"));
+    custom->setAccessibleName(tr("Keep awake for a custom duration"));
+    connect(custom, &QPushButton::clicked, this, &OverviewPage::onCustomDuration);
+    durationRow->addWidget(custom);
     durationRow->addStretch(1);
     cardLayout->addLayout(durationRow);
+
+    m_lastSelection = new QLabel(card);
+    m_lastSelection->setObjectName(QStringLiteral("Subtle"));
+    m_lastSelection->setWordWrap(true);
+    cardLayout->addWidget(m_lastSelection);
 
     cardLayout->addWidget(subtleLabel(
         tr("Choosing a duration replaces the current Keep Awake request; durations never stack."),
@@ -112,6 +130,7 @@ OverviewPage::OverviewPage(Application* app, QWidget* parent)
 
     connect(m_app->inhibition(), &InhibitionCoordinator::stateChanged, this, &OverviewPage::refresh);
     connect(m_app->appState(), &AppState::changed, this, &OverviewPage::refresh);
+    connect(m_app->settings(), &Settings::changed, this, &OverviewPage::refresh);
     refresh();
 
     // 1 s refresh for the remaining-time display.
@@ -185,14 +204,19 @@ void OverviewPage::refresh()
 
     m_turnOffButton->setVisible(busy);
     m_turnOffButton->setEnabled(busy);
+
+    const AwakeDuration last = m_app->lastAwakeDuration();
+    m_lastSelection->setText(tr("Tray left-click starts the last selected duration: %1.")
+                                 .arg(last.label()));
 }
 
-void OverviewPage::onDurationChosen(qint64 ms)
+void OverviewPage::onCustomDuration()
 {
-    if (ms == 0)
-        m_app->awakeIndefinite(QString());
-    else
-        m_app->awakeOn(ms, QStringLiteral("both"));
+    const AwakeDuration last = m_app->lastAwakeDuration();
+    CustomDurationDialog dialog(this, last.isCustom() ? last.customMs : 90LL * 60 * 1000);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    m_app->selectAwakeDuration(dialog.selection());
     refresh();
 }
 

@@ -3,7 +3,6 @@
 #include "app/Paths.h"
 #include "app/Settings.h"
 #include "platform/AutostartBackend.h"
-#include "ui/Icons.h"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -100,33 +99,8 @@ SettingsPage::SettingsPage(Application* app, QWidget* parent)
     cardLayout->addLayout(deleteRow);
     root->addWidget(dataCard);
 
-    // ---- About ----
-    QWidget* aboutCard = sectionCard(tr("About"));
-    cardLayout = qobject_cast<QVBoxLayout*>(aboutCard->layout());
-    auto* aboutRow = new QHBoxLayout();
-    auto* aboutIcon = new QLabel(aboutCard);
-    aboutIcon->setPixmap(Icons::appIcon().pixmap(48, 48));
-    aboutRow->addWidget(aboutIcon);
-    auto* aboutLabel = new QLabel(
-        tr("Kaeru %1 — a local-first keep-awake utility.\n"
-           "GPL-3.0-or-later. No telemetry. Your desktop's own power mechanism is used.")
-            .arg(QStringLiteral(KAERU_VERSION)),
-        aboutCard);
-    aboutLabel->setWordWrap(true);
-    aboutRow->addWidget(aboutLabel, 1);
-    cardLayout->addLayout(aboutRow);
-    auto* quitRow = new QHBoxLayout();
-    auto* quitButton = new QPushButton(tr("Quit Kaeru"), aboutCard);
-    connect(quitButton, &QPushButton::clicked, this, [this] {
-        // Quit releases inhibitors and exits cleanly.
-        m_app->prepareQuit();
-        qApp->quit();
-    });
-    quitRow->addWidget(quitButton);
-    quitRow->addStretch(1);
-    cardLayout->addLayout(quitRow);
-    root->addWidget(aboutCard);
-
+    // About is now a separate navigation destination (WP-09); Settings keeps
+    // only configuration. Quit remains in the tray menu.
     root->addStretch(1);
     scroll->setWidget(content);
     outerLayout->addWidget(scroll);

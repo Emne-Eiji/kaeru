@@ -27,15 +27,19 @@ rewritten by this version.
 
 ## Install (Debian package)
 
-Build or obtain `kaeru_0.2.0-1_amd64.deb`:
+Build or obtain `kaeru_0.2.0-3_amd64.deb` (the 0.2.0-2 checkpoint added the
+live tray status; 0.2.0-3 adds WP-08/09 tray interaction, custom durations,
+the About page and complete theming):
 
 ```bash
-sudo apt install ./kaeru_0.2.0-1_amd64.deb
+sudo apt install ./kaeru_0.2.0-3_amd64.deb
 ```
 
 The debug-symbols `.ddeb` is optional and only useful for debugging; normal
-users should install the main `.deb`. See `dist/0.2.0/README.md` for the
-release layout and checksums.
+users should install the main `.deb`. See `dist/README.md` for the release
+layout and checksums.
+
+Project repository: https://github.com/Emne-Eiji/kaeru
 
 Runtime: a Qt 6 desktop session with `xdg-desktop-portal` is recommended;
 Kaeru falls back to a logind `sleep:block` inhibitor for system sleep when
